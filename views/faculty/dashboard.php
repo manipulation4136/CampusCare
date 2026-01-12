@@ -107,9 +107,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
                 // ✅ OPTIMIZED: Sync Exam Room Readiness (Replaces old manual logic)
                 syncExamReadyStatus($conn, (int)$ad['room_id']);
 
-                // Notify User
+                // Notify User (Reporter)
                 if ($ad['reported_by']) {
                     notify_user($conn, $ad['reported_by'], "🔔 Update: Report for {$ad['asset_code']} is '$status'.");
+                }
+
+                // Notify All Admins
+                $admins = $conn->query("SELECT id FROM users WHERE role='admin'");
+                while ($admin = $admins->fetch_assoc()) {
+                    notify_user($conn, $admin['id'], "🔔 Faculty Update: Report for {$ad['asset_code']} status changed to '$status'.");
                 }
             }
             $conn->commit();
