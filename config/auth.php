@@ -57,10 +57,19 @@ function send_telegram_alert($chat_id, $message) {
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Fix for some local setups, usually safe for this API
-    curl_setopt($ch, CURLOPT_TIMEOUT, 1);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
     $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if (curl_errno($ch)) {
+        error_log("Telegram cURL Error: " . curl_error($ch), 3, __DIR__ . '/../telegram_debug.log');
+    } else {
+        error_log("Telegram Response (Code $http_code): " . $response . PHP_EOL, 3, __DIR__ . '/../telegram_debug.log');
+    }
+    
     curl_close($ch);
+    return $response;
 }
 
 function notify_user(mysqli $conn, int $user_id, string $message) {
@@ -89,6 +98,4 @@ function purgeOldNotifications(mysqli $conn) {
         error_log("Failed to purge old notifications: " . $e->getMessage());
     }
 }
-
 ?>
-
