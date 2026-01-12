@@ -7,7 +7,6 @@ ensure_role('admin');
 // ഇവയൊക്കെ ഓരോ തവണ ഡാഷ്‌ബോർഡ് തുറക്കുമ്പോഴും റൺ ചെയ്യുന്നത് മണ്ടത്തരമാണ്.
 // ഇത് ക്രോൺ ജോബ് (Cron Job) വഴിയോ അല്ലെങ്കിൽ റിപ്പോർട്ട് അപ്‌ഡേറ്റ് ചെയ്യുമ്പോഴോ മാത്രം ചെയ്താൽ മതി.
 // purgeOldNotifications($conn);
-// checkWarrantyExpirations($conn);
 // syncAllExamReadyStatuses($conn); <--- ഇതാണ് വില്ലൻ!
 
 // Notification Check Logic
@@ -25,6 +24,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_urgency'])) {
     $new_urgency = $_POST['new_urgency_priority'];
     
     $conn->query("UPDATE damage_reports SET urgency_priority='$new_urgency' WHERE id=$report_id");
+    
+    // Fetch report details for notification
+    $res = $conn->query("
+        SELECT dr.reported_by, a.asset_code, a.room_id 
+        FROM damage_reports dr 
+        JOIN assets a ON dr.asset_id = a.id 
+        WHERE dr.id = $report_id
+    ");
+
+    if ($row = $res->fetch_assoc()) {
+        $asset_code = $row['asset_code'];
+        
+        // Notify Student (Reporter)
+        if ($row['reported_by']) {
+            notify_user($conn, $row['reported_by'], "Alert: Urgency for {$asset_code} changed to {$new_urgency}.");
+        }
+
+        // Notify Faculty
+        $room_id = (int)$row['room_id'];
+        $fac_res = $conn->query("SELECT faculty_id FROM room_assignments WHERE room_id = $room_id");
+        while ($fac = $fac_res->fetch_assoc()) {
+            notify_user($conn, $fac['faculty_id'], "Alert: Admin changed urgency for {$asset_code} to {$new_urgency}.");
+        }
+    }
+
     set_flash('ok', 'Priority Updated');
     header('Location: ' . BASE_URL . 'views/admin/dashboard.php');
     exit;
