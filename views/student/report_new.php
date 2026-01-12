@@ -155,12 +155,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     notify_user($conn, (int)$f['faculty_id'], $msg);
                 }
 
-                // Notify Admin
+                // Notify Admin (DB Users)
                 $admin_query = $conn->query("SELECT id FROM users WHERE role = 'admin'");
                 while($admin = $admin_query->fetch_assoc()) {
                     $msg = "⚠️ Action Required: New $urgency_priority priority report for $n_asset_name in Room $n_room_no";
                     notify_user($conn, (int)$admin['id'], $msg);
                 }
+
+
 
             } catch (Exception $e) {
                 $conn->rollback();
