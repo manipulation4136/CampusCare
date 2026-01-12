@@ -19,9 +19,21 @@ function get_csrf_input(): string {
 
 function verify_csrf(): bool {
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') return true;
-  if (!isset($_SESSION['csrf_token'])) return false;
-  if (!isset($_POST['csrf_token'])) return false;
-  return hash_equals($_SESSION['csrf_token'], $_POST['csrf_token']);
+  
+  // Graceful Failure: If token missing or mismatch
+  if (!isset($_SESSION['csrf_token']) || !isset($_POST['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $_POST['csrf_token'])) {
+      // Log it if needed: error_log("CSRF Mismatch: " . $_SERVER['REQUEST_URI']);
+      
+      // Destroy session to be safe
+      session_unset();
+      session_destroy();
+      
+      // Redirect to login
+      $login_url = defined('BASE_URL') ? BASE_URL . 'views/login.php' : '../views/login.php';
+      header("Location: $login_url?msg=Session+expired+or+invalid+request");
+      exit;
+  }
+  return true;
 }
 
 
