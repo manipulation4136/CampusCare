@@ -7,7 +7,7 @@ ensure_role('admin');
 // ഇവയൊക്കെ ഓരോ തവണ ഡാഷ്‌ബോർഡ് തുറക്കുമ്പോഴും റൺ ചെയ്യുന്നത് മണ്ടത്തരമാണ്.
 // ഇത് ക്രോൺ ജോബ് (Cron Job) വഴിയോ അല്ലെങ്കിൽ റിപ്പോർട്ട് അപ്‌ഡേറ്റ് ചെയ്യുമ്പോഴോ മാത്രം ചെയ്താൽ മതി.
 // purgeOldNotifications($conn);
-// syncAllExamReadyStatuses($conn); <--- ഇതാണ് വില്ലൻ!
+// syncAllExamReadyStatuses($conn); // Moved to cron_daily_tasks.php
 
 // Notification Check Logic
 if (isset($_POST['check_notifications']) && isset($_SESSION['user'])) {
