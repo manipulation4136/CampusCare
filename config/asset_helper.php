@@ -124,7 +124,12 @@ function checkWarrantyExpirations(mysqli $conn) {
         ['date' => $today,    'type' => 'expired', 'msg_template' => "❌ Status Update: Warranty for %s (%s) has EXPIRED today."]
     ];
 
-    $admin_id = 1; // Assuming Admin ID is always 1
+    // Fetch all admins dynamically
+    $admins = [];
+    $adminQuery = $conn->query("SELECT id FROM users WHERE role = 'admin'");
+    while ($row = $adminQuery->fetch_assoc()) {
+        $admins[] = $row['id'];
+    }
 
     foreach ($intervals as $interval) {
         $checkDate = $interval['date'];
@@ -144,12 +149,15 @@ function checkWarrantyExpirations(mysqli $conn) {
         while ($asset = $result->fetch_assoc()) {
             $msg = sprintf($interval['msg_template'], $asset['name'], $asset['asset_code']);
            
-            // Actually, simply checking if a notification with this exact message exists for this user is safer.
-            $checkNotif = $conn->prepare("SELECT id FROM notifications WHERE user_id = ? AND message = ?");
-            $checkNotif->bind_param("is", $admin_id, $msg);
-            $checkNotif->execute();
-            if ($checkNotif->get_result()->num_rows == 0) {
-                notify_user($conn, $admin_id, $msg);
+            // Notify EACH admin
+            foreach ($admins as $admin_id) {
+                // Check for duplicate for this specific admin
+                $checkNotif = $conn->prepare("SELECT id FROM notifications WHERE user_id = ? AND message = ?");
+                $checkNotif->bind_param("is", $admin_id, $msg);
+                $checkNotif->execute();
+                if ($checkNotif->get_result()->num_rows == 0) {
+                    notify_user($conn, $admin_id, $msg);
+                }
             }
         }
     }
