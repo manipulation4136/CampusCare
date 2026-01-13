@@ -58,14 +58,12 @@ $error = handle_login($conn);
                 <button type="submit" class="btn-login">Login</button>
                 
                 <div class="login-footer">
-                     <img src="<?= BASE_URL ?>img/logo.png" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
+                    <a href="<?= BASE_URL ?>views/register.php">Don't have an account? Register</a>
                 </div>
             </form>
 
             <div class="apk-banner animate-card-entry" style="animation-delay: 0.3s;">
-                <div class="apk-icon">
-                     <img src="<?= BASE_URL ?>icons/logo.png" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
-                </div>
+                   <img src="<?= BASE_URL ?>img/logo.png" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
                 <div class="apk-text">
                     <strong>Get the CampusCare App</strong>
                     <span>Faster access & better experience</span>
@@ -79,6 +77,7 @@ $error = handle_login($conn);
 
 </body>
 </html>
+
 
 
 
