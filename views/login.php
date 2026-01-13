@@ -64,7 +64,7 @@ $error = handle_login($conn);
 
             <div class="apk-banner animate-card-entry" style="animation-delay: 0.3s;">
                 <div class="apk-icon">
-                    <i class="fab fa-android"></i>
+                     <img src="<?= BASE_URL ?>icons/logo.png" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
                 </div>
                 <div class="apk-text">
                     <strong>Get the CampusCare App</strong>
@@ -79,3 +79,4 @@ $error = handle_login($conn);
 
 </body>
 </html>
+
