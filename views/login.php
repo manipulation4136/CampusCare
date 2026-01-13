@@ -58,7 +58,7 @@ $error = handle_login($conn);
                 <button type="submit" class="btn-login">Login</button>
                 
                 <div class="login-footer">
-                    <a href="<?= BASE_URL ?>views/register.php">Don't have an account? Register</a>
+                     <img src="<?= BASE_URL ?>img/logo.png" style="width: 100%; height: 100%; object-fit: contain; border-radius: 50%;">
                 </div>
             </form>
 
@@ -79,5 +79,6 @@ $error = handle_login($conn);
 
 </body>
 </html>
+
 
 
