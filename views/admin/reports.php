@@ -63,7 +63,6 @@ $reportsQuery = "
         dr.created_at, 
         dr.image_path, 
         dr.urgency_priority,
-        dr.issue_type,
         a.asset_code, 
         an.name AS asset_name, 
         r.building, 
@@ -147,7 +146,6 @@ include __DIR__.'/../partials/header.php';
                 <thead>
                     <tr>
                         <th>Image</th>
-                        <th>Issue</th>
                         <th>Asset</th>
                         <th>Room</th>
                         <th>Priority</th>
@@ -169,8 +167,6 @@ include __DIR__.'/../partials/header.php';
                                 'Low' => 'good',
                                 default => 'na'
                             };
-                            // Issue type badge style
-                            $issueClass = ($dr['issue_type'] === 'Missing Sticker') ? 'info' : 'na';
                         ?>
                             <tr>
                                 <td>
@@ -182,7 +178,6 @@ include __DIR__.'/../partials/header.php';
                                         -
                                     <?php endif; ?>
                                 </td>
-                                <td><span class="badge <?= $issueClass ?>"><?= htmlspecialchars($dr['issue_type'] ?? 'Damage') ?></span></td>
                                 <td><?= htmlspecialchars($dr['asset_code'].' - '.$dr['asset_name']) ?></td>
                                 <td><?= htmlspecialchars($dr['building'].'/'.$dr['floor'].'/'.$dr['room_no']) ?></td>
                                 <td><span class="badge <?= $urgencyClass ?>"><?= htmlspecialchars($dr['urgency_priority']) ?></span></td>
@@ -229,14 +224,25 @@ include __DIR__.'/../partials/header.php';
     </div>
 </div>
 
-<div id="imageModal" class="modal" onclick="this.style.display='none'">
-    <img id="modalImage">
+<div id="imageModal" class="modal" onclick="closeModal('imageModal')" style="display:none;">
+    <img id="modalImage" alt="Damage Report">
 </div>
 
 <script>
 function showImage(src) {
+    var modal = document.getElementById('imageModal');
+    // Move to body to ensure fixed positioning works (escapes any parent transforms)
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
     document.getElementById('modalImage').src = src;
-    document.getElementById('imageModal').style.display = 'block';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Lock scroll
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    document.body.style.overflow = ''; // Unlock scroll
 }
 </script>
 
