@@ -67,9 +67,14 @@ $total_reports = $conn->query($rep_count_sql)->fetch_assoc()['total'];
 $total_report_pages = ceil($total_reports / $report_limit);
 
 // Fetch Reports Data
-$reports_sql = "SELECT dr.id, dr.description, dr.status, dr.created_at, dr.image_path, dr.urgency_priority, dr.issue_type, a.asset_code, u.name AS reporter 
+$reports_sql = "SELECT dr.id, dr.description, dr.status, dr.created_at, dr.image_path, dr.urgency_priority, 
+                       a.asset_code, an.name AS asset_name,
+                       r.building, r.room_no,
+                       u.name AS reporter 
                 FROM damage_reports dr 
                 JOIN assets a ON a.id = dr.asset_id 
+                JOIN asset_names an ON a.asset_name_id = an.id
+                JOIN rooms r ON a.room_id = r.id
                 LEFT JOIN users u ON u.id = dr.reported_by 
                 WHERE dr.status IN ('pending', 'in_progress') 
                 ORDER BY CASE dr.urgency_priority WHEN 'Critical' THEN 1 WHEN 'High' THEN 2 WHEN 'Medium' THEN 3 ELSE 4 END, dr.created_at DESC 
@@ -170,18 +175,37 @@ include __DIR__ . '/../partials/header.php';
     <div class="table-scroll">
         <table class="table">
             <thead>
-                <tr><th>Asset</th><th>Type</th><th>Issue</th><th>Status</th><th>Reporter</th><th>Priority</th><th>Action</th></tr>
+                <tr>
+                    <th>Asset</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>Reporter</th>
+                    <th>Priority</th>
+                    <th>Action</th>
+                </tr>
             </thead>
             <tbody>
             <?php while ($r = $reports->fetch_assoc()): ?>
                 <tr>
-                    <td><?= htmlspecialchars($r['asset_code']) ?></td>
-                    <td><?= htmlspecialchars($r['issue_type'] ?? 'Damage') ?></td>
-                    <td><?= htmlspecialchars(substr($r['description'] ?? '-', 0, 30)) ?></td>
-                    <td><span class="badge <?= strtolower($r['status']) ?>"><?= htmlspecialchars($r['status']) ?></span></td>
-                    <td><?= htmlspecialchars($r['reporter'] ?? '-') ?></td>
-                    <td><span class="badge <?= $r['urgency_priority'] == 'Critical' ? 'bad' : 'warn' ?>"><?= $r['urgency_priority'] ?></span></td>
-                    <td>
+                    <td style="vertical-align: top;">
+                        <div style="font-weight: 600; color: #fff;"><?= htmlspecialchars($r['asset_name']) ?></div>
+                        <div style="font-size: 11px; color: #8fa0c9;"><?= htmlspecialchars($r['asset_code']) ?></div>
+                        <div style="font-size: 11px; color: #6ea8fe; margin-top: 2px;">
+                            <?= htmlspecialchars($r['building'] . ' - ' . $r['room_no']) ?>
+                        </div>
+                    </td>
+                    <td style="vertical-align: top;">
+                        <div style="font-size: 12px; color: #8fa0c9; line-height: 1.4; cursor: pointer;" onclick="showDescription(<?= htmlspecialchars(json_encode($r['description'] ?? '')) ?>)">
+                            <?= htmlspecialchars(substr($r['description'] ?? '-', 0, 50)) . (strlen($r['description'] ?? '') > 50 ? '...' : '') ?>
+                        </div>
+                        <?php if($r['image_path']): ?>
+                            <a href="#" onclick="showImage('<?= BASE_URL . ltrim($r['image_path'], '/') ?>'); return false;" style="font-size: 11px; color: #6ea8fe;">View Image</a>
+                        <?php endif; ?>
+                    </td>
+                    <td style="vertical-align: top;"><span class="badge <?= strtolower($r['status']) ?>"><?= htmlspecialchars($r['status']) ?></span></td>
+                    <td style="vertical-align: top;"><?= htmlspecialchars($r['reporter'] ?? '-') ?></td>
+                    <td style="vertical-align: top;"><span class="badge <?= $r['urgency_priority'] == 'Critical' ? 'bad' : 'warn' ?>"><?= $r['urgency_priority'] ?></span></td>
+                    <td style="vertical-align: top;">
                         <form method="post" style="display:inline;">
                             <?= get_csrf_input() ?>
                             <input type="hidden" name="report_id" value="<?= $r['id'] ?>">
@@ -247,5 +271,46 @@ include __DIR__ . '/../partials/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<div id="imageModal" class="modal" onclick="closeModal('imageModal')" style="display:none;">
+    <img id="modalImage" alt="Damage Report">
+</div>
+
+<div id="textModal" class="modal" onclick="closeModal('textModal')" style="display:none;">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3>Report Details</h3>
+        <p id="modalText"></p>
+        <button class="btn small outline" onclick="closeModal('textModal')" style="margin-top:16px; float:right;">Close</button>
+    </div>
+</div>
+
+<script>
+function showImage(src) {
+    var modal = document.getElementById('imageModal');
+    // Move to body to ensure fixed positioning works (escapes any parent transforms)
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
+    document.getElementById('modalImage').src = src;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Lock scroll
+}
+
+function showDescription(text) {
+    var modal = document.getElementById('textModal');
+    // Move to body to ensure fixed positioning works (escapes any parent transforms)
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
+    document.getElementById('modalText').innerText = text;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Lock scroll
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    document.body.style.overflow = ''; // Unlock scroll
+}
+</script>
 
 <?php include __DIR__ . '/../partials/footer.php'; ?>
