@@ -33,6 +33,8 @@ try {
             an.name AS asset_name,
             c.name AS category_name,
             a.parent_asset_id,
+            a.room_id,
+            a.asset_name_id,
             p.asset_code AS parent_code,
             pan.name AS parent_name
         FROM assets a
@@ -59,7 +61,9 @@ try {
                 'id' => $asset['id'],
                 'code' => $asset['asset_code'],
                 'name' => $asset['asset_name'],
-                'category' => $asset['category_name']
+                'category' => $asset['category_name'],
+                'room_id' => $asset['room_id'],
+                'asset_name_id' => $asset['asset_name_id']
             ]
         ];
 
