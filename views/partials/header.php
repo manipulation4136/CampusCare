@@ -35,7 +35,7 @@ function getRoleClass($role) {
   <meta name="csrf-token" content="<?= generate_csrf_token() ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=1.0">
+  <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
   
   <script defer src="<?= BASE_URL ?>assets/js/app.js"></script>
 
