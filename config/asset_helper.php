@@ -9,38 +9,15 @@ require_once __DIR__ . '/init.php';
  * @param string $room_no Room number
  * @return string|null The generated asset code or null if asset name not found
  */
-function getNextAssetCode(mysqli $conn, int $asset_name_id, string $room_no): ?string {
-    // Get asset name
-    $stmt = $conn->prepare("SELECT name FROM asset_names WHERE id = ?");
-    $stmt->bind_param("i", $asset_name_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    
-    if (!$row = $res->fetch_assoc()) {
-        return null;
-    }
-
-    // Clean name: uppercase, alphanumeric only
-    $cleanName = strtoupper(preg_replace('/[^a-zA-Z0-9]/', '', $row['name']));
-    $baseCode = $cleanName . '-' . $room_no . '-';
-
-    // Find last used number
-    // Sort by length first to handle 10 > 2 correctly, then by value
-    $stmt = $conn->prepare("SELECT asset_code FROM assets WHERE asset_code LIKE ? ORDER BY LENGTH(asset_code) DESC, asset_code DESC LIMIT 1");
-    $pattern = $baseCode . '%';
-    $stmt->bind_param("s", $pattern);
-    $stmt->execute();
-    $res = $stmt->get_result();
-
-    $nextNum = 1;
-    if ($row = $res->fetch_assoc()) {
-        $parts = explode('-', $row['asset_code']);
-        // Get the last part as integer
-        $lastNum = (int)end($parts);
-        $nextNum = $lastNum + 1;
-    }
-
-    return $baseCode . $nextNum;
+/**
+ * Generates a random unique asset code in the format AST-XXXXXX.
+ *
+ * @return string The generated asset code
+ */
+function generateUniqueAssetCode(): string {
+    // Generate 3 random bytes and convert to hex (6 chars)
+    $hex = bin2hex(random_bytes(3));
+    return 'AST-' . strtoupper($hex);
 }
 
 /**
@@ -55,21 +32,10 @@ function insertAssetSafe(mysqli $conn, array $data): array {
     $retries = 0;
     $maxRetries = 3;
     
-    // Get room number for code generation
-    $stmt = $conn->prepare("SELECT room_no FROM rooms WHERE id = ?");
-    $stmt->bind_param("i", $data['room_id']);
-    $stmt->execute();
-    $res = $stmt->get_result();
-    if (!$room = $res->fetch_assoc()) {
-        throw new Exception("Invalid room ID");
-    }
-    $room_no = $room['room_no'];
-
+    // No need to fetch room number for code generation anymore
+    
     do {
-        $code = getNextAssetCode($conn, $data['asset_name_id'], $room_no);
-        if (!$code) {
-            throw new Exception("Invalid asset name ID");
-        }
+        $code = generateUniqueAssetCode();
 
         try {
             $stmt = $conn->prepare("
