@@ -214,27 +214,9 @@ include __DIR__ . '/../../partials/header.php';
 <script>
 // Auto-generate code preview
 function generateCode() {
-    const assetNameSelect = document.getElementById('asset_name_id');
-    const roomSelect = document.getElementById('room_id');
     const assetCodeInput = document.getElementById('asset_code');
-    const assetNameId = assetNameSelect.value;
-    const selectedRoom = roomSelect.options[roomSelect.selectedIndex];
-    
-    if (assetNameId && selectedRoom && selectedRoom.value) {
-        const roomNo = selectedRoom.getAttribute('data-room-no');
-        if (roomNo) {
-            try {
-                const assetNameText = assetNameSelect.options[assetNameSelect.selectedIndex].text;
-                const cleanName = assetNameText.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-                const suggestedCode = cleanName + '-' + roomNo + '-1';
-                assetCodeInput.placeholder = 'Will be: ' + suggestedCode + ' (or next available)';
-            } catch (error) {
-                console.error('Error generating code:', error);
-            }
-        }
-    } else {
-        assetCodeInput.placeholder = 'Auto-generated';
-    }
+    assetCodeInput.placeholder = 'Auto-generated (e.g., AST-A1B2C3)';
+    assetCodeInput.value = ''; // Ensure it's empty so it looks like it will be generated
 }
 
 // Date validation
