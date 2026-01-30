@@ -42,7 +42,7 @@ $rooms_count = $rooms_stmt->get_result()->fetch_assoc()['count'];
 // C. Fetch Reports List
 $sql = "
     SELECT 
-        dr.id, dr.description, dr.status, dr.urgency_priority, dr.issue_type, dr.created_at, dr.image_path,
+        dr.id, dr.description, dr.status, dr.urgency_priority, dr.created_at, dr.image_path,
         a.asset_code, an.name AS asset_name,
         r.building, r.floor, r.room_no,
         u.name AS reporter,
@@ -249,8 +249,7 @@ include __DIR__ . '/../partials/header.php';
                         </td>
                         
                         <td style="vertical-align: top;">
-                            <div style="font-size: 13px; color: #e7ecff; margin-bottom: 4px;"><?= htmlspecialchars($dr['issue_type']) ?></div>
-                            <div style="font-size: 12px; color: #8fa0c9; line-height: 1.4;">
+                            <div style="font-size: 12px; color: #8fa0c9; line-height: 1.4; cursor: pointer;" onclick="showDescription(<?= htmlspecialchars(json_encode($dr['description'])) ?>)">
                                 <?= htmlspecialchars(substr($dr['description'], 0, 50)) . (strlen($dr['description']) > 50 ? '...' : '') ?>
                             </div>
                             <?php if($dr['image_path']): ?>
@@ -297,13 +296,44 @@ include __DIR__ . '/../partials/header.php';
 
 </div>
 
-<div id="imageModal" class="modal" onclick="this.style.display='none'">
+<div id="imageModal" class="modal" onclick="closeModal('imageModal')" style="display:none;">
     <img id="modalImage" alt="Damage Report">
 </div>
+
+<div id="textModal" class="modal" onclick="closeModal('textModal')" style="display:none;">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3>Report Details</h3>
+        <p id="modalText"></p>
+        <button class="btn small outline" onclick="closeModal('textModal')" style="margin-top:16px; float:right;">Close</button>
+    </div>
+</div>
+
 <script>
 function showImage(src) {
+    var modal = document.getElementById('imageModal');
+    // Move to body to ensure fixed positioning works (escapes any parent transforms)
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
     document.getElementById('modalImage').src = src;
-    document.getElementById('imageModal').style.display = 'block';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Lock scroll
+}
+
+function showDescription(text) {
+    var modal = document.getElementById('textModal');
+    // Move to body to ensure fixed positioning works (escapes any parent transforms)
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
+    document.getElementById('modalText').innerText = text;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Lock scroll
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    document.body.style.overflow = ''; // Unlock scroll
 }
 </script>
 
