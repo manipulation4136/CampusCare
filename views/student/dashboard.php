@@ -32,6 +32,7 @@ if ($row = $res->fetch_assoc()) {
 
 include __DIR__.'/../partials/header.php';
 ?>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
 <div class="container" style="max-width: 600px; padding-bottom: 80px;">
     
@@ -42,7 +43,7 @@ include __DIR__.'/../partials/header.php';
     </div>
 
     <!-- 2. Hero Action Card -->
-    <a href="<?= BASE_URL ?>views/student/report_new.php" class="hero-card">
+    <a href="javascript:void(0)" onclick="openScannerModal()" class="hero-card">
         <div class="hero-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -115,5 +116,212 @@ include __DIR__.'/../partials/header.php';
     </div>
 
 </div>
+
+<!-- Scanner Modal -->
+<div id="scannerModal" class="modal" style="display:none;" onclick="handleModalClick(event)">
+    <div class="glass-card modal-content scanner-modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Scan QR Code</h3>
+            <span class="close-btn" onclick="closeScannerModal()">&times;</span>
+        </div>
+        <p class="modal-subtitle">Align the QR code within the frame to scan.</p>
+        
+        <div class="scanner-wrapper">
+             <div id="reader"></div>
+             <div class="scanner-overlay">
+                 <div class="scanner-corner top-left"></div>
+                 <div class="scanner-corner top-right"></div>
+                 <div class="scanner-corner bottom-left"></div>
+                 <div class="scanner-corner bottom-right"></div>
+             </div>
+        </div>
+        
+        <div class="modal-actions">
+             <a href="<?= BASE_URL ?>views/student/report_new.php" class="btn-manual-link">
+                Enter Details Manually
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Professional Scanner Modal Styling */
+/* Professional Scanner Modal Styling */
+.modal {
+    position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%;
+    background-color: rgba(5, 8, 15, 0.9); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: flex; /* Flexbox for perfect centering */
+    align-items: flex-start; /* Stick to top */
+    justify-content: center; /* Center horizontally */
+    padding-top: 0; 
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+}
+
+.modal.active {
+    opacity: 1; pointer-events: auto;
+}
+
+.scanner-modal-content {
+    position: relative; /* Reset absolute */
+    top: auto; left: auto; transform: translateY(-100%); /* Only animate Y */
+    
+    background: linear-gradient(180deg, rgba(20, 26, 45, 0.98) 0%, rgba(10, 14, 25, 0.99) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    
+    width: 100%; 
+    max-width: 480px; 
+    margin: 0; /* No auto margin, let flex handle it */
+    padding: 24px 24px 32px;
+    border-radius: 0 0 24px 24px;
+    text-align: center; 
+    
+    transition: transform 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: 100000;
+}
+
+/* Ensure it covers full width on small mobile screens */
+@media (max-width: 480px) {
+    .scanner-modal-content {
+        max-width: 100%;
+        border-radius: 0 0 20px 20px;
+    }
+}
+
+.modal.active .scanner-modal-content {
+    transform: translateY(0); /* Slide down to natural position */
+}
+
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
+    padding-top: env(safe-area-inset-top, 20px); /* Respect notch or add default */
+}
+
+.modal-title {
+    color: #fff; font-size: 1.2rem; margin: 0; font-weight: 600; letter-spacing: 0.5px;
+}
+
+.modal-subtitle {
+    color: #8aa0d0; font-size: 0.9rem; margin: 0 0 24px; text-align: left;
+}
+
+.close-btn {
+    color: #8aa0d0; font-size: 24px; line-height: 1; cursor: pointer; padding: 4px;
+    border-radius: 50%; background: rgba(255,255,255,0.05); width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+}
+.close-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+.scanner-wrapper {
+    width: 100%; border-radius: 16px; overflow: hidden; margin-bottom: 20px;
+    background: #000; position: relative; aspect-ratio: 1;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+}
+
+/* Scanner Overlay Frame */
+.scanner-overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+    box-shadow: inset 0 0 0 40px rgba(0,0,0,0.3); /* Dim edges */
+    border-radius: 16px;
+}
+
+.scanner-corner {
+    position: absolute; width: 24px; height: 24px; border-color: #6ea8fe; border-style: solid;
+}
+.top-left { top: 20px; left: 20px; border-width: 3px 0 0 3px; border-top-left-radius: 12px; }
+.top-right { top: 20px; right: 20px; border-width: 3px 3px 0 0; border-top-right-radius: 12px; }
+.bottom-left { bottom: 20px; left: 20px; border-width: 0 0 3px 3px; border-bottom-left-radius: 12px; }
+.bottom-right { bottom: 20px; right: 20px; border-width: 0 3px 3px 0; border-bottom-right-radius: 12px; }
+
+#reader video {
+    object-fit: cover; width: 100% !important; height: 100% !important;
+}
+
+.modal-actions {
+    margin-top: 10px;
+}
+
+.btn-manual-link {
+    color: #6ea8fe; font-size: 0.95rem; text-decoration: none; font-weight: 500;
+    display: inline-block; padding: 10px 20px; border-radius: 8px;
+    transition: all 0.2s;
+}
+.btn-manual-link:hover {
+    background: rgba(110, 168, 254, 0.1);
+}
+</style>
+
+<script>
+let html5QrcodeScanner = null;
+let isScannerActive = false;
+
+function openScannerModal() {
+    const modal = document.getElementById('scannerModal');
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+        modal.classList.add('active');
+    });
+    
+    if (!isScannerActive) {
+        startScanner();
+    }
+}
+
+function startScanner() {
+    if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+    }
+
+    const config = { 
+        fps: 15, 
+        qrbox: { width: 220, height: 220 }, 
+        aspectRatio: 1.0,
+        experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+        }
+    };
+    
+    html5QrcodeScanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+    .then(() => {
+        isScannerActive = true;
+    })
+    .catch(err => {
+        console.error("Error starting scanner", err);
+        if(err.name === 'NotAllowedError') {
+             alert("Please allow camera access to scan codes.");
+        }
+    });
+}
+
+function closeScannerModal() {
+    const modal = document.getElementById('scannerModal');
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        if (html5QrcodeScanner && isScannerActive) {
+            html5QrcodeScanner.stop().then(() => {
+                isScannerActive = false;
+            }).catch(console.error);
+        }
+    }, 300);
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+    let code = decodedText;
+    window.location.href = "<?= BASE_URL ?>views/student/report_new.php?qr_id=" + encodeURIComponent(code);
+    closeScannerModal(); // Pre-close
+}
+
+function onScanFailure(error) {
+    // Silent
+}
+
+function handleModalClick(event) {
+    const modalContent = document.querySelector('.scanner-modal-content');
+    if (modalContent && !modalContent.contains(event.target)) {
+        closeScannerModal();
+    }
+}
+</script>
 
 <?php include __DIR__.'/../partials/footer.php'; ?>
