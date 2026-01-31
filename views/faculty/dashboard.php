@@ -246,6 +246,13 @@ include __DIR__ . '/../partials/header.php';
                             <div style="font-size: 11px; color: #6ea8fe; margin-top: 2px;">
                                 <?= htmlspecialchars($dr['building'] . ' - ' . $dr['room_no']) ?>
                             </div>
+                            <?php if (strpos($dr['asset_code'], 'MS-') === 0): ?>
+                                <button class="btn small outline" 
+                                        style="margin-top: 5px; font-size: 10px; border-color: #f1c40f; color: #f1c40f;"
+                                        onclick="openRequestModal(<?= $dr['id'] ?>, '<?= $dr['asset_code'] ?>')">
+                                    <i class="fas fa-search"></i> Identify
+                                </button>
+                            <?php endif; ?>
                         </td>
                         
                         <td style="vertical-align: top;">
@@ -300,6 +307,9 @@ include __DIR__ . '/../partials/header.php';
     <img id="modalImage" alt="Damage Report">
 </div>
 
+    </div>
+</div>
+
 <div id="textModal" class="modal" onclick="closeModal('textModal')" style="display:none;">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3>Report Details</h3>
@@ -307,6 +317,60 @@ include __DIR__ . '/../partials/header.php';
         <button class="btn small outline" onclick="closeModal('textModal')" style="margin-top:16px; float:right;">Close</button>
     </div>
 </div>
+
+<div id="requestModal" class="modal" onclick="closeModal('requestModal')" style="display:none; justify-content: center; align-items: center;">
+    <div class="glass-card modal-content" onclick="event.stopPropagation()" style="max-width: 400px; width: 100%; border: 1px solid #f1c40f;">
+        <h3 style="color: #f1c40f; margin-bottom: 15px;"><i class="fas fa-search"></i> Identify Asset</h3>
+        <p style="color: #ddd; margin-bottom: 20px;">
+            Helping us identify: <strong id="reqGhostCode" style="color: #fff;"></strong>.<br>
+            If you see the real asset sticker, please enter the code below.
+        </p>
+        
+        <div class="input-group" style="margin-bottom: 20px;">
+            <input type="text" id="reqRealCode" class="input-dark" placeholder="Real Asset Code (e.g., AST-101)">
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button onclick="submitRequest()" class="btn-login" style="flex: 1; background: #f1c40f; color: #000;">Notify Admin</button>
+            <button onclick="closeModal('requestModal')" class="btn-login outline" style="flex: 1;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentReqId = null;
+
+function openRequestModal(id, code) {
+     currentReqId = id;
+     document.getElementById('reqGhostCode').textContent = code;
+     document.getElementById('reqRealCode').value = '';
+     var modal = document.getElementById('requestModal');
+     if (modal.parentNode !== document.body) document.body.appendChild(modal);
+     modal.style.display = 'flex';
+}
+
+async function submitRequest() {
+    const realCode = document.getElementById('reqRealCode').value.trim();
+    if (!realCode) return alert("Please enter the real code.");
+
+    try {
+        const res = await fetch('<?= BASE_URL ?>includes/submit_merge_request.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ report_id: currentReqId, real_asset_code: realCode })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert("Thanks! Admin has been notified.");
+            location.reload();
+        } else {
+            alert("Error: " + data.error);
+        }
+    } catch (e) {
+        alert("System Error");
+    }
+}
+</script>
 
 <script>
 function showImage(src) {
