@@ -6,7 +6,9 @@ require_once __DIR__ . '/../../config/room_utils.php';
 ensure_role(['student','faculty']);
 
 $error = '';
+$error = '';
 $ok = '';
+$qr_id = $_GET['qr_id'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf()) die('CSRF validation failed');
@@ -25,16 +27,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 1. Asset Code Backend Logic
     if ($asset_code === 'MISSING_STICKER') {
-         // Find ANY valid asset of this type in this room
-         $stmt = $conn->prepare("SELECT asset_code FROM assets WHERE room_id = ? AND asset_name_id = ? LIMIT 1");
-         $stmt->bind_param("ii", $room_id, $asset_name_id);
-         $stmt->execute();
-         if ($row = $stmt->get_result()->fetch_assoc()) {
-             $asset_code = $row['asset_code'];
+         // Security Check: Does any asset of this type exist in this room?
+         $checkStmt = $conn->prepare("SELECT COUNT(*) as count FROM assets WHERE room_id = ? AND asset_name_id = ?");
+         $checkStmt->bind_param("ii", $room_id, $asset_name_id);
+         $checkStmt->execute();
+         $count = $checkStmt->get_result()->fetch_assoc()['count'];
+
+         if ($count == 0) {
+             $error = "Security Block: No assets of this type exist in this room. You cannot report a missing sticker.";
          } else {
-             $asset_code = generateUniqueAssetCode();
+             // DUPLICATE CHECK: Is there ALREADY an active "Missing Sticker" report for this type in this room?
+             $dupCheck = $conn->prepare("SELECT id FROM assets WHERE room_id = ? AND asset_name_id = ? AND asset_code LIKE 'MS-%' AND status = 'Needs Repair'");
+             $dupCheck->bind_param("ii", $room_id, $asset_name_id);
+             $dupCheck->execute();
+             if ($dupCheck->get_result()->fetch_assoc()) {
+                 $error = "A missing sticker report is already pending for this item type in this room. Please wait for the admins to inspect it.";
+             } else {
+                 // Generate a SPECIAL Separate Code for Missing Stickers
+                 // Do NOT use an existing asset code to avoid false flagging
+                 $asset_code = 'MS-' . strtoupper(uniqid()); 
+                 $description = "[STICKER MISSING] - " . $description;
+             }
          }
-         $description = "[STICKER MISSING] - " . $description;
     }
     elseif (empty($asset_code) && $asset_name_id > 0 && $room_id > 0) {
         $asset_code = generateUniqueAssetCode();
@@ -46,11 +60,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("SELECT id, room_id, parent_asset_id, status FROM assets WHERE asset_code = ?");
         $stmt->bind_param("s", $asset_code);
         $stmt->execute();
-        $asset = $stmt->get_result()->fetch_assoc();
+        // Fetch asset_name as well for notifications
+        $assetResult = $stmt->get_result();
+        // We need to join or fetch the name if it's not in the 'assets' table directly (it's normalized)
+        // Let's optimize: First fetch basic data, then fetch name if needed.
+        $asset = $assetResult->fetch_assoc();
+        
+        if ($asset) {
+            $nameQ = $conn->prepare("SELECT name FROM asset_names WHERE id = (SELECT asset_name_id FROM assets WHERE id = ?)");
+            $nameQ->bind_param("i", $asset['id']);
+            $nameQ->execute();
+            $nameRow = $nameQ->get_result()->fetch_assoc();
+            $asset['asset_name'] = $nameRow['name'] ?? 'Unknown Asset';
+        }
 
         // ✅ RACE CONDITION FIX STARTS HERE
         if (!$asset) {
-             if ($asset_name_id && $room_id) {
+             // CRITICAL SECURITY FIX: Only allow creation for "Missing Sticker" (MS-) codes
+             // Reject random user inputs like "stikermis" or typos
+             if (strpos($asset_code, 'MS-') !== 0) {
+                 $error = "Invalid Asset Code: '{$asset_code}' does not exist in the database. Please scan a QR code or select a valid asset.";
+             } 
+             elseif ($asset_name_id && $room_id) {
+                // ... (Creation Logic for MS- codes) ...
                 $catRes = $conn->query("SELECT id FROM categories LIMIT 1");
                 $category_id = ($row = $catRes->fetch_assoc()) ? $row['id'] : 0;
                 $dealerRes = $conn->query("SELECT id FROM dealers LIMIT 1");
@@ -78,18 +110,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
 
                     } catch (mysqli_sql_exception $e) {
-                        // ✅ CRITICAL FIX: Catch Duplicate Entry Error (Code 1062)
-                        // If someone else created it 1ms ago, don't crash. Just use it.
+                        // Keep the duplicate handler just in case
                         if ($e->getCode() == 1062) {
                             $retryStmt = $conn->prepare("SELECT id, room_id, parent_asset_id, status FROM assets WHERE asset_code = ?");
                             $retryStmt->bind_param("s", $asset_code);
                             $retryStmt->execute();
                             $asset = $retryStmt->get_result()->fetch_assoc();
                             
-                            // If still null, then it's a real ghost error
                             if (!$asset) $error = "System Error: Duplicate asset code conflict.";
                         } else {
-                            // Real Database Error
                             $error = 'Database Error: ' . $e->getMessage();
                         }
                     } catch (Exception $e) {
@@ -99,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $error = 'System configuration error: Missing default category/dealer.';
                 }
              } else {
-                 $error = "Asset not found. Please select Room and Asset Name to create it.";
+                 $error = "Asset details incomplete.";
              }
         }
         // ✅ RACE CONDITION FIX ENDS HERE
@@ -140,6 +169,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$error && $asset) {
             try {
                 $conn->begin_transaction();
+
+                // CHECK FOR RELOCATION
+                if ($asset['room_id'] != $room_id) {
+                    // Get Old Room Details
+                    $oldRoomQ = $conn->prepare("SELECT room_no FROM rooms WHERE id = ?");
+                    $oldRoomQ->bind_param("i", $asset['room_id']);
+                    $oldRoomQ->execute();
+                    $oldRoomRow = $oldRoomQ->get_result()->fetch_assoc();
+                    $oldRoomNo = $oldRoomRow['room_no'] ?? 'Unknown';
+
+                    // Update Asset Location
+                    $moveStmt = $conn->prepare("UPDATE assets SET room_id = ? WHERE id = ?");
+                    $moveStmt->bind_param("ii", $room_id, $asset['id']);
+                    $moveStmt->execute();
+
+                    // Get New Room Details
+                    $newRoomQ = $conn->prepare("SELECT room_no FROM rooms WHERE id = ?");
+                    $newRoomQ->bind_param("i", $room_id);
+                    $newRoomQ->execute();
+                    $newRoomRow = $newRoomQ->get_result()->fetch_assoc();
+                    $newRoomNo = $newRoomRow['room_no'] ?? 'Unknown';
+
+                    $studentName = $_SESSION['user']['name'] ?? 'A Student';
+                    $assetName = $asset['asset_name'] ?? 'Asset'; // Need to make sure asset_name is available or fetched
+
+                    // 1. Notify OLD Room Faculty
+                    $oldFacQ = $conn->query("SELECT faculty_id FROM room_assignments WHERE room_id = " . (int)$asset['room_id']);
+                    while($f = $oldFacQ->fetch_assoc()) {
+                        $msg = "■ Asset Removed: Student {$studentName} moved {$assetName} ({$asset_code}) OUT of your room {$oldRoomNo} to {$newRoomNo}.";
+                        notify_user($conn, (int)$f['faculty_id'], $msg);
+                    }
+
+                    // 2. Notify NEW Room Faculty
+                    $newFacQ = $conn->query("SELECT faculty_id FROM room_assignments WHERE room_id = " . (int)$room_id);
+                    while($f = $newFacQ->fetch_assoc()) {
+                        $msg = "■ Asset Incoming: Student {$studentName} moved {$assetName} ({$asset_code}) INTO your room {$newRoomNo} from {$oldRoomNo}. Status: Needs Repair.";
+                        notify_user($conn, (int)$f['faculty_id'], $msg);
+                    }
+
+                    // 3. Notify Admins
+                    $admin_query = $conn->query("SELECT id FROM users WHERE role = 'admin'");
+                    while($admin = $admin_query->fetch_assoc()) {
+                         $msg = "■■ Relocation Alert: {$assetName} ({$asset_code}) was moved from {$oldRoomNo} to {$newRoomNo} by {$studentName}.";
+                        notify_user($conn, (int)$admin['id'], $msg);
+                    }
+                }
 
                 $final_description = $description;
                 if ($asset['parent_asset_id'] && !empty($cpu_id)) {
@@ -233,6 +308,7 @@ function playAchievementSound() {
 
     <form method="post" enctype="multipart/form-data">
         <?= get_csrf_input() ?>
+        <input type="hidden" name="is_relocated" id="is_relocated" value="0">
         
         <div style="margin-bottom: 15px;">
             <label style="color: #ccc; font-size: 0.9em; margin-bottom: 5px; display: block;">Room</label>
@@ -249,6 +325,9 @@ function playAchievementSound() {
                 <i class="fa-solid fa-map-marker-alt"></i>
                 <i class="fa-solid fa-chevron-down" style="left: auto; right: 16px;"></i>
             </div>
+            <small id="relocation-warning" style="display: none; color: #f1c40f; margin-top: 5px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> Note: Asset location will be updated to the current room.
+            </small>
         </div>
 
         <div style="margin-bottom: 15px;">
@@ -320,6 +399,25 @@ function playAchievementSound() {
     </div>
 </div>
 
+<div id="locationConfirmModal" class="modal" style="display:none;">
+    <div class="glass-card modal-content" style="border: 1px solid rgba(255,255,255,0.1); background: rgba(20, 20, 25, 0.95); max-width: 500px;">
+        <h3 style="color: #fff; margin-bottom: 20px;">Verify Location</h3>
+        <p style="color: #ddd; margin-bottom: 25px; line-height: 1.5;">
+            Asset found: <strong id="confirm_asset_name" style="color: #6ea8fe;"></strong>.<br>
+            Database shows this asset belongs in <strong id="confirm_room_name" style="color: #6ea8fe;"></strong>.<br><br>
+            Is it currently there?
+        </p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="btn-confirm-loc" class="btn-login" style="background: #2ecc71; width: auto; flex: 1;">
+                <i class="fas fa-check"></i> Yes, Confirm Location
+            </button>
+            <button id="btn-asset-moved" class="btn-login" style="background: transparent; border: 1px solid #e74c3c; color: #e74c3c; width: auto; flex: 1;">
+                <i class="fas fa-times"></i> No, It's Moved
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 <?php if ($error === 'DUPLICATE_REPORT'): ?>
 document.addEventListener('DOMContentLoaded', function() {
@@ -329,6 +427,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 let isAutoFilling = false;
 let currentRoomAssets = [];
+let originalRoomId = null;
+let pendingRoomId = null;
 
 async function fetchRoomAssets() {
     if (isAutoFilling) return;
@@ -350,17 +450,25 @@ async function fetchRoomAssets() {
                 const assetName = nameSelect.options[nameSelect.selectedIndex].text;
                 const message = `No ${assetName} found in this room`;
                 
-                const noOption = document.createElement('option');
-                noOption.value = message;
-                datalist.appendChild(noOption);
-                
+                // Don't add it as an option, just set placeholder
                 const input = document.getElementById('asset_code');
-                input.value = message;
-                input.readOnly = true; 
+                input.value = ''; // Clear value
+                input.placeholder = message; // Show message in placeholder
+                input.readOnly = false; // Allow typing if they want to correct it or type a new code
+                
+                // CRITICAL FIX: Hide the "Unknown / Sticker Missing" option if no assets exist
+                // Blocks students from reporting missing stickers for non-existent assets
             } else {
                  // Reset if coming back to a valid state
                 const input = document.getElementById('asset_code');
+                input.placeholder = "Select item or type code (e.g., AST-B02)";
                 if(input.readOnly) { input.readOnly = false; input.value = ''; }
+                
+                // Only show this option if assets ACTUALLY exist
+                const missingOption = document.createElement('option');
+                missingOption.value = "MISSING_STICKER";
+                missingOption.label = "Unknown / Sticker Missing";
+                datalist.appendChild(missingOption);
             }
 
             currentRoomAssets.forEach(asset => {
@@ -370,10 +478,7 @@ async function fetchRoomAssets() {
                 datalist.appendChild(option);
             });
             
-            const missingOption = document.createElement('option');
-            missingOption.value = "MISSING_STICKER";
-            missingOption.label = "Unknown / Sticker Missing";
-            datalist.appendChild(missingOption);
+            // Moved MISSING_STICKER logic to inside the else block above
             
         } catch (e) {
             console.error('Failed to fetch assets');
@@ -431,8 +536,23 @@ async function verifyAssetCode(code) {
                 isAutoFilling = true;
                 const roomSelect = document.getElementById('room_id');
                 const nameSelect = document.getElementById('asset_name_id');
-                if (data.asset.room_id) roomSelect.value = data.asset.room_id;
+                
+                // Set Name first
                 if (data.asset.asset_name_id) nameSelect.value = data.asset.asset_name_id;
+                
+                if (data.asset.room_id) {
+                    // Prepare Modal Data
+                    const roomOption = roomSelect.querySelector(`option[value="${data.asset.room_id}"]`);
+                    const roomName = roomOption ? roomOption.text.trim() : 'Unknown Room';
+                    const assetName = nameSelect.options[nameSelect.selectedIndex].text.trim();
+                    
+                    document.getElementById('confirm_asset_name').textContent = assetName;
+                    document.getElementById('confirm_room_name').textContent = roomName;
+                    
+                    pendingRoomId = data.asset.room_id;
+                    document.getElementById('locationConfirmModal').style.display = 'block';
+                }
+                
                 isAutoFilling = false;
             }
 
@@ -469,6 +589,78 @@ window.onclick = function(event) {
         document.getElementById('duplicateModal').style.display = 'none';
     }
 }
+
+function checkRelocation() {
+    const roomSelect = document.getElementById('room_id');
+    const warning = document.getElementById('relocation-warning');
+    const hiddenInput = document.getElementById('is_relocated');
+    
+    // Only warn if we have a verified original room and the new value is different
+    if (originalRoomId) {
+        if (roomSelect.value != originalRoomId || roomSelect.value === "") {
+            // Relocated (or currently empty/selecting)
+            warning.style.display = 'block';
+            hiddenInput.value = '1';
+            roomSelect.style.borderColor = '#f39c12'; // Orange
+        } else {
+            // Matches Original
+            warning.style.display = 'none';
+            hiddenInput.value = '0';
+            roomSelect.style.borderColor = '#27ae60'; // Green
+        }
+    } else {
+        warning.style.display = 'none';
+        hiddenInput.value = '0';
+        roomSelect.style.borderColor = ''; // Reset
+    }
+}
+
+// Listen for room changes
+document.getElementById('room_id').addEventListener('change', checkRelocation);
+
+// Modal Actions
+document.getElementById('btn-confirm-loc').addEventListener('click', function(e) {
+    e.preventDefault(); // Prevent form submission if inside form
+    const roomSelect = document.getElementById('room_id');
+    
+    if (pendingRoomId) {
+        roomSelect.value = pendingRoomId;
+        originalRoomId = pendingRoomId;
+        // Optionally add visual indicator here if needed
+    }
+    
+    document.getElementById('is_relocated').value = '0';
+    document.getElementById('locationConfirmModal').style.display = 'none';
+    checkRelocation();
+});
+
+document.getElementById('btn-asset-moved').addEventListener('click', function(e) {
+    e.preventDefault();
+    const roomSelect = document.getElementById('room_id');
+    
+    roomSelect.value = ""; // Reset to empty
+    originalRoomId = pendingRoomId; // We still know where it *should* be
+    
+    document.getElementById('is_relocated').value = '1';
+    document.getElementById('locationConfirmModal').style.display = 'none';
+    
+    roomSelect.focus();
+    checkRelocation(); // Will update UI warning
+});
+
+// Auto-trigger from QR Code
+document.addEventListener('DOMContentLoaded', function() {
+    const qrId = "<?= htmlspecialchars($qr_id) ?>";
+    const hasSuccessMessage = <?= !empty($ok) ? 'true' : 'false' ?>;
+    const hasErrorMessage = <?= !empty($error) ? 'true' : 'false' ?>;
+    
+    // Only auto-trigger if there is a QR ID AND we did not just submit (success or error)
+    if (qrId && !hasSuccessMessage && !hasErrorMessage) {
+        const input = document.getElementById('asset_code');
+        input.value = qrId;
+        verifyAssetCode(qrId);
+    }
+});
 </script>
 
 <style>
