@@ -58,6 +58,9 @@ $totalPages = ceil($totalReports / $limit);
 $reportsQuery = "
     SELECT 
         dr.id, 
+        dr.id, 
+        dr.asset_id, /* Added asset_id fetch */
+        dr.suggested_real_code, /* NEW */
         dr.description, 
         dr.status, 
         dr.created_at, 
@@ -193,6 +196,26 @@ include __DIR__.'/../partials/header.php';
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
+                                    
+                                    <?php if (strpos($dr['asset_code'], 'MS-') === 0): ?>
+                                        <?php if (!empty($dr['suggested_real_code'])): ?>
+                                            <!-- APPROVE MERGE BUTTON -->
+                                            <div style="margin-top: 5px;">
+                                                <button class="btn small" 
+                                                        style="background-color: #27ae60; color: #fff; font-size: 11px; width: 100%; margin-bottom: 2px;"
+                                                        onclick="openMergeModal(<?= $dr['asset_id'] ?>, '<?= $dr['asset_code'] ?>'); setTimeout(() => { document.getElementById('realAssetCode').value = '<?= $dr['suggested_real_code'] ?>'; }, 100);">
+                                                    ✅ Approve: <?= $dr['suggested_real_code'] ?>
+                                                </button>
+                                            </div>
+                                        <?php else: ?>
+                                            <!-- MANUAL MERGE BUTTON -->
+                                            <button class="btn small outline" 
+                                                    style="margin-left: 5px; border-color: #f1c40f; color: #f1c40f;"
+                                                    onclick="openMergeModal(<?= $dr['asset_id'] ?>, '<?= $dr['asset_code'] ?>')">
+                                                <i class="fas fa-link"></i> Merge
+                                            </button>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
@@ -244,6 +267,89 @@ function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
     document.body.style.overflow = ''; // Unlock scroll
 }
+
+// Check for Merge Success
+function checkMergeStatus() {
+    // If needed, we can check for URL params here, but we are doing AJAX
+}
+
+let currentGhostId = null;
+
+function openMergeModal(ghostId, ghostCode) {
+    currentGhostId = ghostId;
+    document.getElementById('ghostCodeDisplay').textContent = ghostCode;
+    document.getElementById('realAssetCode').value = '';
+    
+    // Position modal in body
+    const modal = document.getElementById('mergeAssetModal');
+    if (modal.parentNode !== document.body) {
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'flex';
+}
+
+async function submitMerge() {
+    const realCode = document.getElementById('realAssetCode').value.trim();
+    if (!realCode) {
+        alert("Please enter a Real Asset Code.");
+        return;
+    }
+    
+    if (!confirm("Are you sure you want to merge this temporary asset into " + realCode + "?\nThis cannot be undone.")) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('<?= BASE_URL ?>includes/merge_asset.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ghost_asset_id: currentGhostId,
+                real_asset_code: realCode
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert("Report transferred to " + realCode + ". Temporary asset deleted.");
+            location.reload();
+        } else {
+            alert("Error: " + (data.error || "Unknown error occurred"));
+        }
+    } catch (e) {
+        alert("System Error: " + e.message);
+    }
+}
+
+// Add Enter key listener for the modal input
+document.getElementById('realAssetCode').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        submitMerge();
+    }
+});
 </script>
+
+<!-- Merge Modal -->
+<div id="mergeAssetModal" class="modal" style="display:none; justify-content: center; align-items: center;">
+    <div class="glass-card modal-content" style="max-width: 450px; width: 100%; border: 1px solid #f1c40f;">
+        <h3 style="color: #f1c40f; margin-bottom: 15px;"><i class="fas fa-link"></i> Identify Missing Sticker</h3>
+        <p style="color: #ddd; margin-bottom: 20px;">
+            You are resolving the temporary asset: <strong id="ghostCodeDisplay" style="color: #fff;"></strong>.<br>
+            Please enter the <strong>Real Asset Code</strong> found on the physical item.
+        </p>
+        
+        <div class="input-group" style="margin-bottom: 20px;">
+            <input type="text" id="realAssetCode" class="input-dark" placeholder="Enter Real Asset Code (e.g., AST-101)">
+            <i class="fas fa-barcode"></i>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button onclick="submitMerge()" class="btn-login" style="flex: 1; background: #f1c40f; color: #000;">Merge & Resolve</button>
+            <button onclick="document.getElementById('mergeAssetModal').style.display='none'" class="btn-login outline" style="flex: 1;">Cancel</button>
+        </div>
+    </div>
+</div>
 
 <?php include __DIR__.'/../partials/footer.php'; ?>
