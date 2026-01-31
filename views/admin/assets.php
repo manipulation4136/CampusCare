@@ -99,6 +99,9 @@ include __DIR__ . '/../partials/header.php';
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
         <h2 style="margin: 0; color: #fff; font-size: 24px;">Asset Management</h2>
         <div style="display: flex; gap: 12px; align-items: center;">
+            <a href="<?= BASE_URL ?>views/admin/generate_qr.php" target="_blank" class="btn outline small">
+                <i class="fas fa-qrcode"></i> Get QR
+            </a>
             <a href="<?= BASE_URL ?>views/admin/asset_names.php" class="btn outline small">Manage Asset Names</a>
             <a href="<?= BASE_URL ?>views/admin/forms/move_asset.php" class="btn outline small">
                 <i class="fas fa-exchange-alt"></i> Relocate
