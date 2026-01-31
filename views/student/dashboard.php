@@ -308,8 +308,35 @@ function closeScannerModal() {
 
 function onScanSuccess(decodedText, decodedResult) {
     let code = decodedText;
+    
+    // Attempt to extract qr_id if it's a URL
+    try {
+        // Create a dummy base if it's a relative URL, though QR is likely absolute
+        const url = new URL(decodedText, window.location.origin);
+        if (url.searchParams.has('qr_id')) {
+            code = url.searchParams.get('qr_id');
+        } else {
+            // Fallback: Check if the text mimics our URL structure via simple regex
+            // Useful if the URL constructor fails or it's a weird string
+            const match = decodedText.match(/[?&]qr_id=([^&]+)/);
+            if (match && match[1]) {
+                code = decodeURIComponent(match[1]);
+            }
+        }
+    } catch (e) {
+        // Not a URL, try regex just in case
+        const match = decodedText.match(/[?&]qr_id=([^&]+)/);
+        if (match && match[1]) {
+            code = decodeURIComponent(match[1]);
+        }
+    }
+    
+    // Sanitize: If code is still a full URL (no qr_id found), we might want to alert or just use it?
+    // Project requirement implies we want the Asset Code. 
+    // If it's just "AST-001", regex won't match, code remains "AST-001", which is correct.
+    
     window.location.href = "<?= BASE_URL ?>views/student/report_new.php?qr_id=" + encodeURIComponent(code);
-    closeScannerModal(); // Pre-close
+    closeScannerModal(); 
 }
 
 function onScanFailure(error) {
