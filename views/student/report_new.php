@@ -425,12 +425,16 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 <?php endif; ?>
 
+// ... (Top of scripts)
 let isAutoFilling = false;
 let currentRoomAssets = [];
 let originalRoomId = null;
 let pendingRoomId = null;
+let lastProcessedCode = null; // Track handled codes
 
 async function fetchRoomAssets() {
+    // ... (Existing fetch logic) ...
+    // Note: No changes needed in fetchRoomAssets logic itself
     if (isAutoFilling) return;
 
     const roomId = document.getElementById('room_id').value;
@@ -450,21 +454,15 @@ async function fetchRoomAssets() {
                 const assetName = nameSelect.options[nameSelect.selectedIndex].text;
                 const message = `No ${assetName} found in this room`;
                 
-                // Don't add it as an option, just set placeholder
                 const input = document.getElementById('asset_code');
-                input.value = ''; // Clear value
-                input.placeholder = message; // Show message in placeholder
-                input.readOnly = false; // Allow typing if they want to correct it or type a new code
-                
-                // CRITICAL FIX: Hide the "Unknown / Sticker Missing" option if no assets exist
-                // Blocks students from reporting missing stickers for non-existent assets
+                input.value = ''; 
+                input.placeholder = message; 
+                input.readOnly = false; 
             } else {
-                 // Reset if coming back to a valid state
                 const input = document.getElementById('asset_code');
                 input.placeholder = "Select item or type code (e.g., AST-B02)";
                 if(input.readOnly) { input.readOnly = false; input.value = ''; }
                 
-                // Only show this option if assets ACTUALLY exist
                 const missingOption = document.createElement('option');
                 missingOption.value = "MISSING_STICKER";
                 missingOption.label = "Unknown / Sticker Missing";
@@ -478,8 +476,6 @@ async function fetchRoomAssets() {
                 datalist.appendChild(option);
             });
             
-            // Moved MISSING_STICKER logic to inside the else block above
-            
         } catch (e) {
             console.error('Failed to fetch assets');
         }
@@ -492,6 +488,7 @@ document.getElementById('asset_code').addEventListener('input', function() {
     const descInput = document.getElementById('description');
     
     if (val === 'MISSING_STICKER') {
+        // ... (Existing Missing Sticker Logic) ...
         descLabel.innerHTML = 'Describe Location & Damage <span style="color:#e74c3c">*</span>';
         descInput.placeholder = 'Please describe where the asset is located AND what is wrong (e.g., Near the window, leg broken).';
         descInput.style.borderColor = '#e74c3c';
@@ -511,6 +508,8 @@ document.getElementById('asset_code').addEventListener('input', function() {
         
         if (val.length > 3) {
             verifyAssetCode(val);
+        } else {
+            lastProcessedCode = null; // Reset if code is too short
         }
     }
 });
@@ -521,7 +520,8 @@ async function verifyAssetCode(code) {
     try {
         const formData = new FormData();
         formData.append('asset_code', code);
-        const csrf = document.querySelector('input[name="csrf_token"]').value;
+        const csrfRaw = document.querySelector('input[name="csrf_token"]');
+        const csrf = csrfRaw ? csrfRaw.value : ''; // Safety check
         formData.append('csrf_token', csrf);
 
         const response = await fetch('<?= BASE_URL ?>includes/check_asset.php', {
@@ -533,27 +533,33 @@ async function verifyAssetCode(code) {
         
         if (data.exists) {
             if (!isAutoFilling) {
-                isAutoFilling = true;
-                const roomSelect = document.getElementById('room_id');
-                const nameSelect = document.getElementById('asset_name_id');
-                
-                // Set Name first
-                if (data.asset.asset_name_id) nameSelect.value = data.asset.asset_name_id;
-                
-                if (data.asset.room_id) {
-                    // Prepare Modal Data
-                    const roomOption = roomSelect.querySelector(`option[value="${data.asset.room_id}"]`);
-                    const roomName = roomOption ? roomOption.text.trim() : 'Unknown Room';
-                    const assetName = nameSelect.options[nameSelect.selectedIndex].text.trim();
+                // Prevent showing modal again if we just processed this code
+                if (lastProcessedCode !== code) {
                     
-                    document.getElementById('confirm_asset_name').textContent = assetName;
-                    document.getElementById('confirm_room_name').textContent = roomName;
+                    isAutoFilling = true;
+                    lastProcessedCode = code; // Mark as processed
+
+                    const roomSelect = document.getElementById('room_id');
+                    const nameSelect = document.getElementById('asset_name_id');
                     
-                    pendingRoomId = data.asset.room_id;
-                    document.getElementById('locationConfirmModal').style.display = 'block';
+                    // Set Name first
+                    if (data.asset.asset_name_id) nameSelect.value = data.asset.asset_name_id;
+                    
+                    if (data.asset.room_id) {
+                        // Prepare Modal Data
+                        const roomOption = roomSelect.querySelector(`option[value="${data.asset.room_id}"]`);
+                        const roomName = roomOption ? roomOption.text.trim() : 'Unknown Room';
+                        const assetName = nameSelect.options[nameSelect.selectedIndex] ? nameSelect.options[nameSelect.selectedIndex].text.trim() : 'Asset';
+                        
+                        document.getElementById('confirm_asset_name').textContent = assetName;
+                        document.getElementById('confirm_room_name').textContent = roomName;
+                        
+                        pendingRoomId = data.asset.room_id;
+                        document.getElementById('locationConfirmModal').style.display = 'block';
+                    }
+                    
+                    isAutoFilling = false;
                 }
-                
-                isAutoFilling = false;
             }
 
             const cpuContainer = document.getElementById('cpu-id-container');
