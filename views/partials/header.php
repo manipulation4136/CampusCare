@@ -27,8 +27,8 @@ function getRoleClass($role) {
 <!doctype html>
 <html lang="en">
 <head>
-  <link rel="icon" type="image/png" sizes="32x32" href="<?= BASE_URL ?>favicon.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="<?= BASE_URL ?>favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= BASE_URL ?>img/logo.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="<?= BASE_URL ?>img/logo.png">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>College Asset Damage Reporting</title>
