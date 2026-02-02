@@ -84,6 +84,8 @@ function checkWarrantyExpirations(mysqli $conn) {
     $in30Days = date('Y-m-d', strtotime('+30 days'));
     $in7Days = date('Y-m-d', strtotime('+7 days'));
 
+    echo "Checking for Expiry on: [Today: $today], [7 Days: $in7Days], [30 Days: $in30Days]\n";
+
     $intervals = [
         ['date' => $in30Days, 'type' => '30_days', 'msg_template' => "Upcoming Expiry: Warranty for %s (%s) expires in 30 days. Plan for renewal."],
         ['date' => $in7Days,  'type' => '7_days',  'msg_template' => "⚠️ Action Required: Warranty for %s (%s) expires in 1 week."],
