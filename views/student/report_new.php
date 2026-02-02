@@ -17,6 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $asset_code = trim($_POST['asset_code'] ?? '');
     $asset_name_id = (int)($_POST['asset_name_id'] ?? 0);
     $room_id = (int)($_POST['room_id'] ?? 0);
+    $is_relocated = $_POST['is_relocated'] ?? '0'; // Capture the flag
     
     // User Decision: Hardcoded Priority & No Issue Type
     $urgency_priority = 'Medium'; 
@@ -27,27 +28,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 1. Asset Code Backend Logic
     if ($asset_code === 'MISSING_STICKER') {
-         // Security Check: Does any asset of this type exist in this room?
-         $checkStmt = $conn->prepare("SELECT COUNT(*) as count FROM assets WHERE room_id = ? AND asset_name_id = ?");
-         $checkStmt->bind_param("ii", $room_id, $asset_name_id);
-         $checkStmt->execute();
-         $count = $checkStmt->get_result()->fetch_assoc()['count'];
+         // Security Check REMOVED to allow reporting moved assets
+         // We no longer block if count == 0.
 
-         if ($count == 0) {
-             $error = "Security Block: No assets of this type exist in this room. You cannot report a missing sticker.";
+         // DUPLICATE CHECK: Is there ALREADY an active "Missing Sticker" report for this type in this room?
+         $dupCheck = $conn->prepare("SELECT id FROM assets WHERE room_id = ? AND asset_name_id = ? AND asset_code LIKE 'MS-%' AND status = 'Needs Repair'");
+         $dupCheck->bind_param("ii", $room_id, $asset_name_id);
+         $dupCheck->execute();
+         if ($dupCheck->get_result()->fetch_assoc()) {
+             $error = "A missing sticker report is already pending for this item type in this room. Please wait for the admins to inspect it.";
          } else {
-             // DUPLICATE CHECK: Is there ALREADY an active "Missing Sticker" report for this type in this room?
-             $dupCheck = $conn->prepare("SELECT id FROM assets WHERE room_id = ? AND asset_name_id = ? AND asset_code LIKE 'MS-%' AND status = 'Needs Repair'");
-             $dupCheck->bind_param("ii", $room_id, $asset_name_id);
-             $dupCheck->execute();
-             if ($dupCheck->get_result()->fetch_assoc()) {
-                 $error = "A missing sticker report is already pending for this item type in this room. Please wait for the admins to inspect it.";
-             } else {
-                 // Generate a SPECIAL Separate Code for Missing Stickers
-                 // Do NOT use an existing asset code to avoid false flagging
-                 $asset_code = 'MS-' . strtoupper(uniqid()); 
-                 $description = "[STICKER MISSING] - " . $description;
-             }
+             // Generate a SPECIAL Separate Code for Missing Stickers
+             // Do NOT use an existing asset code to avoid false flagging
+             $asset_code = 'MS-' . strtoupper(uniqid()); 
+             $description = "[STICKER MISSING] - " . $description;
          }
     }
     elseif (empty($asset_code) && $asset_name_id > 0 && $room_id > 0) {
@@ -171,7 +165,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $conn->begin_transaction();
 
                 // CHECK FOR RELOCATION
-                if ($asset['room_id'] != $room_id) {
+                // Explicitly check for flag OR implicit mismatch
+                if (($asset['room_id'] != $room_id) || ($is_relocated === '1')) {
                     // Get Old Room Details
                     $oldRoomQ = $conn->prepare("SELECT room_no FROM rooms WHERE id = ?");
                     $oldRoomQ->bind_param("i", $asset['room_id']);
@@ -449,15 +444,31 @@ async function fetchRoomAssets() {
             currentRoomAssets = await response.json();
             
             const input = document.getElementById('asset_code');
+            
+            // Validate if we should clear the input
+            const currentVal = input.value.trim();
+            // Only clear if empty OR if it holds a system message ("No ... found").
+            // Do NOT clear if user entered a code (e.g. for relocation).
+            const isSystemMessage = currentVal.startsWith('No ') && currentVal.includes('found');
+            
             if (currentRoomAssets.length === 0) {
                 const nameSelect = document.getElementById('asset_name_id');
                 const assetName = nameSelect.options[nameSelect.selectedIndex].text;
-                input.value = ''; 
-                input.placeholder = `No ${assetName} found in this room`;
-                input.readOnly = false; 
+                
+                // Only overwrite if it's safe to do so
+                if (!currentVal || isSystemMessage) {
+                    input.value = ''; 
+                    input.placeholder = `No ${assetName} found in this room`;
+                    input.readOnly = false; 
+                }
             } else {
                 input.placeholder = "Select item or type code (e.g., AST-B02)";
-                if(input.readOnly) { input.readOnly = false; input.value = ''; }
+                if(input.readOnly) { input.readOnly = false; }
+                
+                // If previously showing "No assets found", clear it now that we have assets
+                if (isSystemMessage) {
+                    input.value = '';
+                }
             }
             
             // Render the dropdown options initially (filtered by current empty input)
