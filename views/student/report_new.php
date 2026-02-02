@@ -347,17 +347,18 @@ function playAchievementSound() {
             </div>
         </div>
 
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 15px; position: relative;" id="asset-code-group">
             <label style="color: #ccc; font-size: 0.9em; margin-bottom: 5px; display: block;">Asset Code</label>
             <div class="input-group">
-                <input class="input-dark" name="asset_code" id="asset_code" list="asset_code_list"
+                <input class="input-dark" name="asset_code" id="asset_code" 
                        placeholder="Select item or type code (e.g., AST-B02)"
                        value="<?= htmlspecialchars($_POST['asset_code'] ?? '') ?>"
                        autocomplete="off">
-                <datalist id="asset_code_list">
-                    </datalist>
                 <i class="fa-solid fa-barcode"></i>
             </div>
+            <!-- Custom Dropdown Container -->
+            <div id="custom-dropdown" class="custom-dropdown"></div>
+            
             <small style="color: rgba(255,255,255,0.5); display: block; margin-top: 5px;">
                 Mode A: Select Room + Name to see list. <br> Mode B: Type code directly if known.
             </small>
@@ -434,14 +435,12 @@ let lastProcessedCode = null; // Track handled codes
 
 async function fetchRoomAssets() {
     // ... (Existing fetch logic) ...
-    // Note: No changes needed in fetchRoomAssets logic itself
     if (isAutoFilling) return;
 
     const roomId = document.getElementById('room_id').value;
     const assetNameId = document.getElementById('asset_name_id').value;
-    const datalist = document.getElementById('asset_code_list');
+    // Cleared custom dropdown logic handled in render
     
-    datalist.innerHTML = '';
     currentRoomAssets = [];
     
     if (roomId && assetNameId) {
@@ -449,46 +448,94 @@ async function fetchRoomAssets() {
             const response = await fetch(`<?= BASE_URL ?>includes/api_get_room_assets.php?room_id=${roomId}&asset_name_id=${assetNameId}`);
             currentRoomAssets = await response.json();
             
+            const input = document.getElementById('asset_code');
             if (currentRoomAssets.length === 0) {
                 const nameSelect = document.getElementById('asset_name_id');
                 const assetName = nameSelect.options[nameSelect.selectedIndex].text;
-                const message = `No ${assetName} found in this room`;
-                
-                const input = document.getElementById('asset_code');
                 input.value = ''; 
-                input.placeholder = message; 
+                input.placeholder = `No ${assetName} found in this room`;
                 input.readOnly = false; 
             } else {
-                const input = document.getElementById('asset_code');
                 input.placeholder = "Select item or type code (e.g., AST-B02)";
                 if(input.readOnly) { input.readOnly = false; input.value = ''; }
-                
-                const missingOption = document.createElement('option');
-                missingOption.value = "MISSING_STICKER";
-                missingOption.label = "Unknown / Sticker Missing";
-                datalist.appendChild(missingOption);
             }
-
-            currentRoomAssets.forEach(asset => {
-                const option = document.createElement('option');
-                option.value = asset.code;
-                option.label = `${asset.name} (Code: ${asset.code}) - ${asset.status}`;
-                datalist.appendChild(option);
-            });
             
+            // Render the dropdown options initially (filtered by current empty input)
+            renderDropdown();
+
         } catch (e) {
             console.error('Failed to fetch assets');
         }
     }
 }
 
-document.getElementById('asset_code').addEventListener('input', function() {
-    const val = this.value.trim();
+// Render Dropdown Function
+function renderDropdown() {
+    const input = document.getElementById('asset_code');
+    const filter = input.value.trim().toUpperCase();
+    const dropdown = document.getElementById('custom-dropdown');
+    
+    // Always clear first
+    dropdown.innerHTML = '';
+    
+    // 1. Add "Missing Sticker" option if it matches filter or filter is empty
+    const missingOptionText = "Unknown / Sticker Missing";
+    const missingOptionCode = "MISSING_STICKER";
+    
+    let hasMatches = false;
+
+    // Filter Assets
+    const filteredAssets = currentRoomAssets.filter(asset => {
+        return asset.code.toUpperCase().includes(filter) || asset.name.toUpperCase().includes(filter);
+    });
+
+    if (filteredAssets.length > 0) {
+        filteredAssets.forEach(asset => {
+            const div = document.createElement('div');
+            div.className = 'dropdown-option';
+            div.innerHTML = `<strong>${asset.code}</strong> <small>${asset.name} - ${asset.status}</small>`;
+            div.onclick = function() { selectAsset(asset.code); };
+            dropdown.appendChild(div);
+        });
+        hasMatches = true;
+    }
+
+    // Always show missing sticker option at the bottom if applicable
+    if ("MISSING_STICKER".includes(filter) || filter === '') {
+        const div = document.createElement('div');
+        div.className = 'dropdown-option';
+        div.innerHTML = `<strong style="color: #e74c3c;">${missingOptionCode}</strong> <small>${missingOptionText}</small>`;
+        div.onclick = function() { selectAsset('MISSING_STICKER'); };
+        dropdown.appendChild(div);
+        hasMatches = true;
+    }
+
+    // Show/Hide Dropdown
+    if (hasMatches) { // Only show if we have data or user is typing
+         dropdown.classList.add('show');
+    } else {
+         dropdown.classList.remove('show');
+    }
+}
+
+function selectAsset(code) {
+    const input = document.getElementById('asset_code');
+    input.value = code;
+    document.getElementById('custom-dropdown').classList.remove('show');
+    
+    // Trigger existing logic
+    handleInputLogic();
+    verifyAssetCode(code);
+}
+
+// Consolidated Input Logic
+function handleInputLogic() {
+    const input = document.getElementById('asset_code');
+    const val = input.value.trim();
     const descLabel = document.getElementById('desc-label');
     const descInput = document.getElementById('description');
     
     if (val === 'MISSING_STICKER') {
-        // ... (Existing Missing Sticker Logic) ...
         descLabel.innerHTML = 'Describe Location & Damage <span style="color:#e74c3c">*</span>';
         descInput.placeholder = 'Please describe where the asset is located AND what is wrong (e.g., Near the window, leg broken).';
         descInput.style.borderColor = '#e74c3c';
@@ -500,17 +547,37 @@ document.getElementById('asset_code').addEventListener('input', function() {
              document.getElementById('cpu-id-container').style.display = 'none';
              document.getElementById('cpu_id').required = false;
         }
-
     } else {
         descLabel.innerHTML = 'Description';
         descInput.placeholder = "Describe the issue...";
         descInput.style.borderColor = '';
         
         if (val.length > 3) {
-            verifyAssetCode(val);
+            // verifyAssetCode is called on blur or selection, we can debounce here if needed
         } else {
-            lastProcessedCode = null; // Reset if code is too short
+            lastProcessedCode = null; 
         }
+    }
+}
+
+
+document.getElementById('asset_code').addEventListener('input', function() {
+    renderDropdown(); // Filter list
+    handleInputLogic(); // Handle UI changes
+});
+
+document.getElementById('asset_code').addEventListener('focus', function() {
+    // Show list on focus if we have data
+    if (currentRoomAssets.length > 0 || this.value.length > 0) {
+        renderDropdown();
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const container = document.getElementById('asset-code-group');
+    if (!container.contains(e.target)) {
+        document.getElementById('custom-dropdown').classList.remove('show');
     }
 });
 
@@ -578,7 +645,10 @@ async function verifyAssetCode(code) {
 }
 
 document.getElementById('asset_code').addEventListener('blur', function() {
-    verifyAssetCode(this.value.trim());
+    // Small delay to allow click event on dropdown to fire first
+    setTimeout(() => {
+        verifyAssetCode(this.value.trim());
+    }, 200);
 });
 
 function resetAutoFill(source) {
@@ -678,6 +748,54 @@ document.addEventListener('DOMContentLoaded', function() {
     margin: 15% auto; padding: 30px; width: 90%; max-width: 400px; text-align: center;
 }
 textarea.input-dark::placeholder { color: rgba(255, 255, 255, 0.6); }
+
+/* Custom Dropdown CSS */
+.custom-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: rgba(20, 20, 25, 0.98); /* Slightly more opaque */
+    border: 1px solid rgba(110, 168, 254, 0.2); /* Use accent color for border */
+    border-radius: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 99999; /* Force it above everything */
+    display: none;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Stronger shadow */
+    margin-top: 5px;
+}
+.custom-dropdown.show {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .custom-dropdown {
+        max-height: 200px; /* Reduced height for mobile keyboards */
+    }
+}
+.dropdown-option {
+    padding: 12px 15px;
+    color: #eee;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: background 0.2s;
+    font-size: 0.95em;
+}
+.dropdown-option:last-child {
+    border-bottom: none;
+}
+.dropdown-option:hover, .dropdown-option.active {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+.dropdown-option small {
+    display: block;
+    color: #aaa;
+    font-size: 0.85em;
+    margin-top: 2px;
+}
 </style>
 
 <?php include __DIR__ . '/../partials/footer.php'; ?>
