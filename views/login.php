@@ -15,7 +15,7 @@ $error = handle_login($conn);
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Login | CampusCare</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="<?= BASE_URL ?>favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="<?= BASE_URL ?>img/logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
   <link rel="manifest" href="<?= BASE_URL ?>manifest.json">
@@ -29,66 +29,9 @@ $error = handle_login($conn);
     }
   </script>
 </head>
-  <style>
-    /* Splash Screen Styles */
-    #app-splash {
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: #0b1020;
-        z-index: 999999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition: opacity 0.5s ease-out, visibility 0.5s;
-    }
-    .splash-logo {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        margin-bottom: 20px;
-        animation: pulse 2s infinite;
-        box-shadow: 0 0 30px rgba(110, 168, 254, 0.3);
-    }
-    .splash-text {
-        font-size: 24px;
-        font-weight: 800;
-        color: #fff;
-        opacity: 0;
-        animation: slideUp 0.8s ease-out 0.3s forwards;
-    }
-    .splash-text span { color: #6ea8fe; }
-    
-    @keyframes pulse {
-        0% { transform: scale(1); box-shadow: 0 0 30px rgba(110, 168, 254, 0.3); }
-        50% { transform: scale(1.05); box-shadow: 0 0 50px rgba(110, 168, 254, 0.6); }
-        100% { transform: scale(1); box-shadow: 0 0 30px rgba(110, 168, 254, 0.3); }
-    }
-    @keyframes slideUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
 </head>
 <body>
 
-    <!-- Native-like Splash Screen -->
-    <div id="app-splash">
-        <img src="<?= BASE_URL ?>img/logo.png" class="splash-logo" alt="Logo">
-        <div class="splash-text">Campus<span>Care</span></div>
-    </div>
-
-    <script>
-        // Splash Screen Logic
-        window.addEventListener('load', () => {
-            const splash = document.getElementById('app-splash');
-            setTimeout(() => {
-                splash.style.opacity = '0';
-                splash.style.visibility = 'hidden';
-            }, 1500); // 1.5s Minimum display time
-        });
-    </script>
-    
     <div class="ambient-glow"></div>
 
     <div class="login-wrapper">
