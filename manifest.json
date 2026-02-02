@@ -3,8 +3,8 @@
   "short_name": "CampusCare",
   "start_url": "/views/login.php",
   "display": "standalone",
-  "background_color": "#0b1020",
-  "theme_color": "#0b1020",
+  "background_color": "#030510",
+  "theme_color": "#030510",
   "icons": [
     {
       "src": "/img/logo.png",
