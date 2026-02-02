@@ -32,9 +32,9 @@ $types = "";
 
 if ($search) {
     $searchTerm = "%$search%";
-    $whereSQL = "WHERE a.asset_code LIKE ? OR reporter.name LIKE ? OR u.name LIKE ? OR dr.description LIKE ?";
-    $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm];
-    $types = "ssss";
+    $whereSQL = "WHERE a.asset_code LIKE ? OR reporter.name LIKE ? OR u.name LIKE ? OR dr.description LIKE ? OR r.room_no LIKE ?";
+    $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm];
+    $types = "sssss";
 }
 
 // Count Total
@@ -42,6 +42,7 @@ $countQuery = "
     SELECT COUNT(*) as total 
     FROM damage_reports dr
     JOIN assets a ON a.id = dr.asset_id
+    JOIN rooms r ON a.room_id = r.id
     LEFT JOIN users u ON u.id = dr.assigned_to
     LEFT JOIN users reporter ON reporter.id = dr.reported_by
     $whereSQL
