@@ -38,6 +38,16 @@ function getRoleClass($role) {
   <link rel="stylesheet" href="<?= BASE_URL ?>assets/css/style.css?v=<?= time() ?>">
   
   <script defer src="<?= BASE_URL ?>assets/js/app.js"></script>
+  <link rel="manifest" href="<?= BASE_URL ?>manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('<?= BASE_URL ?>service-worker.js')
+          .then(reg => console.log('SW Registered!', reg.scope))
+          .catch(err => console.log('SW Failed:', err));
+      });
+    }
+  </script>
 
 <script>
 /* =========================================
