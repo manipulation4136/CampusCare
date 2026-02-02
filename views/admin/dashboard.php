@@ -3,11 +3,23 @@ require_once __DIR__ . '/../../config/init.php';
 require_once __DIR__ . '/../../config/asset_helper.php';
 ensure_role('admin');
 
-// 🛑 STOP DOING HEAVY TASKS ON PAGE LOAD!
-// ഇവയൊക്കെ ഓരോ തവണ ഡാഷ്‌ബോർഡ് തുറക്കുമ്പോഴും റൺ ചെയ്യുന്നത് മണ്ടത്തരമാണ്.
-// ഇത് ക്രോൺ ജോബ് (Cron Job) വഴിയോ അല്ലെങ്കിൽ റിപ്പോർട്ട് അപ്‌ഡേറ്റ് ചെയ്യുമ്പോഴോ മാത്രം ചെയ്താൽ മതി.
-// purgeOldNotifications($conn);
-// syncAllExamReadyStatuses($conn); // Moved to cron_daily_tasks.php
+// --- ONE-TIME DAILY CHECK (Warranty & Exam Sync) ---
+// TiDB/Render Compatible: Uses DB instead of ephemeral file
+$todayDate = date('Y-m-d');
+$cronCheck = $conn->query("SELECT last_run_date FROM system_cron_logs LIMIT 1");
+$cronRow = $cronCheck->fetch_assoc();
+$lastRunDate = $cronRow['last_run_date'] ?? '2000-01-01';
+
+if ($lastRunDate !== $todayDate) {
+    // Run the tasks silently (Capture output to prevent UI clutter)
+    ob_start();
+    include __DIR__ . '/../../cron_daily_tasks.php';
+    ob_get_clean(); // Discard output
+
+    // Update DB to prevent re-running today
+    // Using ON DUPLICATE to be safe even if the table was empty
+    $conn->query("INSERT INTO system_cron_logs (id, last_run_date) VALUES (1, '$todayDate') ON DUPLICATE KEY UPDATE last_run_date = '$todayDate'");
+}
 
 // Notification Check Logic
 if (isset($_POST['check_notifications']) && isset($_SESSION['user'])) {
