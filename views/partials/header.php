@@ -31,6 +31,7 @@ function getRoleClass($role) {
   <link rel="icon" type="image/png" sizes="16x16" href="<?= BASE_URL ?>img/logo.png">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#030510">
   <title>College Asset Damage Reporting</title>
   <meta name="csrf-token" content="<?= generate_csrf_token() ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
