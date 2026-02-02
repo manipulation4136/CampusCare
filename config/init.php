@@ -1,5 +1,6 @@
 <?php
 // Session Configuration (1 Hour)
+date_default_timezone_set('Asia/Kolkata');
 ini_set('session.gc_maxlifetime', 3600);
 session_set_cookie_params(3600);
 
