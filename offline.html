@@ -339,10 +339,10 @@
             const charNameText = document.getElementById('charNameText');
 
             const CONFIG = {
-                GRAVITY: 1.2,
+                GRAVITY: 1.1,
                 JUMP_FORCE: -20,
                 SPEED_START: 4,
-                SPEED_MAX: 14,
+                SPEED_MAX: 12,
                 ROOM_DISTANCE: 300
             };
             const FAIL_MESSAGES = ["Tripped on a wire!", "Principal saw you running!", "Late for the Exam!", "ID Card Missing!", "Caught by the Squad!"];
@@ -656,15 +656,11 @@
                     state.nextRoomThreshold += CONFIG.ROOM_DISTANCE;
                     state.roomsClearedInFloor++;
                     state.spawnMilestoneDoor = true;
-                    state.speed += 0.15;
-                    roomEl.innerText = state.roomNumber;
 
-                    // --- NEW CHARACTER LOGIC START ---
-                    // Increment index to switch character
+                    roomEl.innerText = state.roomNumber;
                     state.characterIndex++;
                     const nextChar = characterRoster[state.characterIndex % characterRoster.length];
                     showCharacterUnlock(nextChar.name);
-                    // --- NEW CHARACTER LOGIC END ---
 
                     if (state.roomsClearedInFloor >= 5) { state.floorNumber++; state.roomsClearedInFloor = 0; state.visualScore += 150; state.score += 150; state.bgHue = (state.bgHue + 50) % 360; floorEl.innerText = state.floorNumber; showFloatingText("FLOOR " + state.floorNumber + " REACHED!", 0, 0, 'floor'); showFloatingText("BONUS +150", 0, 0, 'room'); }
                     else { showFloatingText("LEVEL UP!", 0, 0, 'room'); }
@@ -696,7 +692,13 @@
                 });
                 if (hit) { gameOver(); return; }
                 state.score += 0.05; state.visualScore = Math.floor(state.score); checkProgression();
-                if (state.frame % 60 === 0) state.speed = Math.min(CONFIG.SPEED_MAX, state.speed + 0.05);
+                if (state.frame % 60 === 0) {
+
+                    const progression = state.score / 2000;
+                    const speedRange = CONFIG.SPEED_MAX - CONFIG.SPEED_START;
+
+                    state.speed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_START + (progression * speedRange));
+                }
                 state.frame++; scoreEl.innerText = state.visualScore; animationId = requestAnimationFrame(gameLoop);
             }
 
