@@ -1,15 +1,40 @@
+const CACHE_NAME = 'campuscare-offline-v3';
+const ASSETS_TO_CACHE = [
+  '/',
+  '/index.php',
+  '/assets/css/style.css',
+  '/offline.html',
+  '/img/logo.png',
+  '/img/icon.png'
+];
+
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Force this new service worker to become the active one
   event.waitUntil(
-    caches.open('v1').then((cache) => {
-      return cache.addAll([
-        '/',
-        '/index.php',
-        '/style.css',
-        '/offline.html',
-        '/icon-192.png',
-        '/icons/icon-512.png'
-      ]);
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Opened cache');
+      return cache.addAll(ASSETS_TO_CACHE);
+    }).catch(err => {
+      console.error('Failed to cache assets:', err);
     })
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(), // Take control of all open clients immediately
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => {
+            if (cacheName !== CACHE_NAME) {
+              console.log('Deleting old cache:', cacheName);
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+    ])
   );
 });
 
