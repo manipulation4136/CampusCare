@@ -12,6 +12,10 @@ require_once __DIR__ . '/env_loader.php';
 loadEnv(__DIR__ . '/../.env');
 
 require_once __DIR__ . '/config.php';
+
+// Global Error Handler (Must be before DB connection)
+require_once __DIR__ . '/../includes/error_handler.php';
+
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/room_utils.php';
