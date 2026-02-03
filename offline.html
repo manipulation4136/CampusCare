@@ -1,1029 +1,1101 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CampusCare: Offline</title>
-<!-- Add FontAwesome for icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    body,html{
-        margin:0; padding:0; width:100%; height:100%;
-        overflow:hidden; background:#0b1020;
-        touch-action:none; user-select: none;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    canvas{display:block;width:100%;height:100%;}
-    
-    /* GLASSMORPHISM UI */
-    .header-bar {
-        position: absolute; top: 0; left: 0; right: 0;
-        height: 60px;
-        background: rgba(19, 26, 43, 0.8);
-        backdrop-filter: blur(10px);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 20px;
-        z-index: 100;
-        border-bottom: 1px solid rgba(110, 168, 254, 0.1);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CampusCare: Offline</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0b1020;
+            touch-action: none;
+            user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
-    .app-logo {
-        color: #fff;
-        font-weight: 700;
-        font-size: 1.2rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
 
-    .offline-status {
-        color: #e74c3c;
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(231, 76, 60, 0.1);
-        padding: 5px 12px;
-        border-radius: 20px;
-        border: 1px solid rgba(231, 76, 60, 0.3);
-    }
+        /* GLASSMORPHISM UI */
+        .header-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(19, 26, 43, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 100;
+            border-bottom: 1px solid rgba(110, 168, 254, 0.1);
+        }
 
-    .ui-layer{
-        position:absolute; top:80px; left:20px;
-        color:#6ea8fe; font-weight:bold; letter-spacing: 1px;
-        background: rgba(19, 26, 43, 0.6);
-        backdrop-filter: blur(8px);
-        padding: 10px 15px;
-        border-radius: 8px;
-        border: 1px solid rgba(110, 168, 254, 0.2);
-        display: flex;
-        gap: 20px;
-    }
+        .app-logo {
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-    /* RIGHT SIDE HIGH SCORE */
-    .ui-layer-right {
-        position:absolute; top:80px; right:20px;
-        color:#f1c40f; font-weight:bold; letter-spacing: 1px;
-        background: rgba(19, 26, 43, 0.6);
-        backdrop-filter: blur(8px);
-        padding: 10px 15px;
-        border-radius: 8px;
-        border: 1px solid rgba(241, 196, 15, 0.3);
-        display: flex;
-        gap: 20px;
-    }
+        .offline-status {
+            color: #e74c3c;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+        }
 
-    .stat-box {
-        display: flex; flex-direction: column;
-    }
-    .stat-label { font-size: 0.7em; opacity: 0.7; }
-    .stat-val { font-size: 1.2em; color: #fff; }
+        .ui-layer {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: #6ea8fe;
+            font-weight: bold;
+            letter-spacing: 1px;
+            background: rgba(19, 26, 43, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(110, 168, 254, 0.2);
+            display: flex;
+            gap: 20px;
+        }
 
-    #startScreen, #gameOverModal {
-        position:absolute; top:50%; left:50%;
-        transform:translate(-50%,-50%);
-        text-align:center; color:white;
-        pointer-events:none;
-        z-index: 10;
-        width: 90%;
-        max-width: 400px;
-    }
+        /* RIGHT SIDE HIGH SCORE */
+        .ui-layer-right {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #f1c40f;
+            font-weight: bold;
+            letter-spacing: 1px;
+            background: rgba(19, 26, 43, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(241, 196, 15, 0.3);
+            display: flex;
+            gap: 20px;
+        }
 
-    #startScreen h1 {
-        font-size: 2.5rem; text-transform: uppercase;
-        text-shadow: 0 0 20px rgba(110, 168, 254, 0.5);
-        margin-bottom: 5px;
-    }
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+        }
 
-    #gameOverModal {
-        display:none; pointer-events:auto;
-        background: rgba(19, 26, 43, 0.95);
-        backdrop-filter: blur(20px);
-        padding: 40px;
-        border: 1px solid rgba(231, 76, 60, 0.5);
-        border-radius: 16px;
-        box-shadow: 0 0 50px rgba(0,0,0,0.5);
-        min-width: 280px;
-    }
+        .stat-label {
+            font-size: 0.7em;
+            opacity: 0.7;
+        }
 
-    button {
-        background: linear-gradient(135deg, #6ea8fe, #5d9cec);
-        color: #0b1020; border:none; padding: 15px 40px;
-        font-weight:900; font-size: 1.2rem; cursor:pointer;
-        margin-top:20px; border-radius: 50px;
-        text-transform: uppercase;
-        box-shadow: 0 5px 15px rgba(110, 168, 254, 0.4);
-        transition: transform 0.1s;
-    }
-    button:active { transform: scale(0.95); }
+        .stat-val {
+            font-size: 1.2em;
+            color: #fff;
+        }
 
-    .manual-retry-btn {
-        position: absolute;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(110, 168, 254, 0.1);
-        color: #6ea8fe;
-        border: 1px solid rgba(110, 168, 254, 0.3);
-        padding: 10px 25px;
-        font-size: 1rem;
-        border-radius: 30px;
-        cursor: pointer;
-        z-index: 20;
-        backdrop-filter: blur(5px);
-        transition: all 0.3s ease;
-    }
-    .manual-retry-btn:hover {
-        background: rgba(110, 168, 254, 0.2);
-    }
+        #startScreen,
+        #gameOverModal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            pointer-events: none;
+            z-index: 10;
+            width: 90%;
+            max-width: 400px;
+        }
 
-    /* Floating Text for Rewards/Level Up */
-    .floating-text {
-        position: absolute;
-        font-weight: 900;
-        pointer-events: none;
-        animation: floatUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        z-index: 5;
-        white-space: nowrap;
-    }
-    
-    .text-bonus { color: #f1c40f; font-size: 1.5rem; }
-    .text-room { color: #2ecc71; font-size: 2rem; text-transform: uppercase; width: 100%; text-align: center; left:0; top: 30%; }
-    .text-floor { color: #e67e22; font-size: 3rem; text-transform: uppercase; width: 100%; text-align: center; left:0; top: 20%; text-shadow: 0 0 20px #e67e22; }
+        #startScreen h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(110, 168, 254, 0.5);
+            margin-bottom: 5px;
+        }
 
-    @keyframes floatUp {
-        0% { opacity: 0; transform: translateY(20px) scale(0.8); }
-        20% { opacity: 1; transform: translateY(0) scale(1.1); }
-        100% { opacity: 0; transform: translateY(-80px) scale(1); }
-    }
-</style>
+        #gameOverModal {
+            display: none;
+            pointer-events: auto;
+            background: rgba(19, 26, 43, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border: 1px solid rgba(231, 76, 60, 0.5);
+            border-radius: 16px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            min-width: 280px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #6ea8fe, #5d9cec);
+            color: #0b1020;
+            border: none;
+            padding: 15px 40px;
+            font-weight: 900;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-top: 20px;
+            border-radius: 50px;
+            text-transform: uppercase;
+            box-shadow: 0 5px 15px rgba(110, 168, 254, 0.4);
+            transition: transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .manual-retry-btn {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(110, 168, 254, 0.1);
+            color: #6ea8fe;
+            border: 1px solid rgba(110, 168, 254, 0.3);
+            padding: 10px 25px;
+            font-size: 1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            z-index: 20;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .manual-retry-btn:hover {
+            background: rgba(110, 168, 254, 0.2);
+        }
+
+        svg {
+            fill: currentColor;
+            width: 1em;
+            height: 1em;
+        }
+
+        /* Floating Text for Rewards/Level Up */
+        .floating-text {
+            position: absolute;
+            font-weight: 900;
+            pointer-events: none;
+            animation: floatUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            z-index: 5;
+            white-space: nowrap;
+        }
+
+        .text-bonus {
+            color: #f1c40f;
+            font-size: 1.5rem;
+        }
+
+        .text-room {
+            color: #2ecc71;
+            font-size: 2rem;
+            text-transform: uppercase;
+            width: 100%;
+            text-align: center;
+            left: 0;
+            top: 30%;
+        }
+
+        .text-floor {
+            color: #e67e22;
+            font-size: 3rem;
+            text-transform: uppercase;
+            width: 100%;
+            text-align: center;
+            left: 0;
+            top: 20%;
+            text-shadow: 0 0 20px #e67e22;
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.8);
+            }
+
+            20% {
+                opacity: 1;
+                transform: translateY(0) scale(1.1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1);
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<div class="header-bar">
-    <div class="app-logo">
-        <i class="fas fa-graduation-cap"></i> CampusCare
+    <div class="header-bar">
+        <div class="app-logo">
+            <svg viewBox="0 0 640 512">
+                <path
+                    d="M349.9 236.3h-61.3c.1-12.4-8.9-23.7-21.6-26.6-13.8-3.2-27.3 6.2-27.3 20.3v174c0 10.9 8.8 19.7 19.7 19.7h89.1c10.9 0 19.7-8.8 19.7-19.7v-142c0-14.3-11.6-25.7-25.7-25.7zM623.1 190.4L337.8 8.1c-10.8-6.9-24.8-6.9-35.6 0L16.9 190.4c-15.8 10.1-20.5 31.2-10.4 47 10.1 15.8 31.2 20.5 47 10.4l20.4-13V432c0 17.7 14.3 32 32 32h160c17.7 0 32-14.3 32-32V320h44v112c0 17.7 14.3 32 32 32h160c17.7 0 32-14.3 32-32V234.8l20.4 13c15.8 10.1 36.9 5.4 47-10.4 10.1-15.8 5.4-36.9-10.4-47zM160 160h320v32H160z" />
+            </svg>
+            CampusCare
+        </div>
+        <div class="offline-status">
+            <svg viewBox="0 0 640 512">
+                <path
+                    d="M634.91 154.88C457.74-8.99 182.19-8.93 5.09 154.88c-6.66 6.16-6.79 16.59-.35 22.98l34.24 33.97c6.14 6.1 16.28 6.25 22.65.33 143.46-132.8 365.17-132.87 508.66.19 6.33 5.86 16.39 5.75 22.56-.37l34.22-33.96c6.43-6.38 6.3-16.82-.35-22.98zM320 352c-35.35 0-64 28.65-64 64s28.65 64 64 64 64-28.65 64-64-28.65-64-64-64zm202.67-83.59c-115.26-101.93-302.27-101.76-417.34 0-6.23 5.51-6.64 15.03-.89 21.03l25.39 26.5c5.68 5.93 15.03 6.37 21.26.96 85.01-73.83 209.61-73.74 294.52 0 6.21 5.39 15.54 4.96 21.24-.95l25.4-26.51c5.74-5.99 5.33-15.51-.89-21.03zm-89.98 77.26c-65.04-56.5-167.35-56.55-232.06 0-6.19 5.41-6.72 14.86-1.11 20.9l27.16 29.23c5.63 6.06 15.13 6.46 21.19 1.01 40.59-36.47 102.72-36.52 143.34-.05 6.09 5.46 15.6 5.06 21.21-1.02l27.17-29.23c5.59-6.02 5.08-15.48-1.12-20.91zM51.2 464c-17.67 0-32-14.33-32-32H0c0 28.33 22.95 51.35 51.2 51.35V464zm43.2-126.8l-18.4 19.2c2.1 6.8 6.63 12.87 13.9 16.27l124 57.8 65.5-54.8c-126.6-1.1-155.1-16.1-185-38.4z" />
+            </svg>
+            Disconnected
+        </div>
     </div>
-    <div class="offline-status">
-        <i class="fas fa-wifi-slash"></i> Disconnected
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div class="ui-layer">
+        <!-- ... ui-layer content ... -->
     </div>
-</div>
+    <!-- ... ui-layer-right ... -->
+    <!-- ... startScreen ... -->
+    <!-- ... gameOverModal ... -->
 
-<canvas id="gameCanvas"></canvas>
+    <button class="manual-retry-btn" onclick="location.reload()">
+        <svg viewBox="0 0 512 512">
+            <path
+                d="M440.65 12.57l4 82.77A247.16 247.16 0 0 0 255.83 8C134.73 8 33.91 94.92 12.29 209.82A12 12 0 0 0 24.09 224h49.08a12 12 0 0 0 11.82-9.78C101.27 131.33 171.49 74.57 253.91 74.57c63.4 0 119.2 33.91 150.77 84.58L348.61 180a12 12 0 0 0 8.61 20.62h143.95A12 12 0 0 0 512 188.72V47.51a12 12 0 0 0-21.35-8.48zM245.83 437.43c-63.4 0-119.2-33.91-150.77-84.58L163.39 332a12 12 0 0 0-8.61-20.62H10.84A12 12 0 0 0 0 323.28v141.21a12 12 0 0 0 21.35 8.48l43-41c26.34 25.5 59.87 43.14 96.86 48.9a247.28 247.28 0 0 0 36.62 2.7c121.1 0 221.92-86.92 243.54-201.82A12 12 0 0 0 429.91 288h-49.08a12 12 0 0 0-11.82 9.78c-16.27 82.89-86.49 139.65-168.91 139.65z" />
+        </svg>
+        Retry Connection
+    </button>
 
-<div class="ui-layer">
-    <div class="stat-box">
-        <span class="stat-label">FLOOR</span>
-        <span class="stat-val" id="floorDisplay">1</span>
-    </div>
-    <div class="stat-box">
-        <span class="stat-label">ROOM</span>
-        <span class="stat-val" id="roomDisplay">101</span>
-    </div>
-    <div class="stat-box">
-        <span class="stat-label">SCORE</span>
-        <span class="stat-val" id="scoreDisplay">0</span>
-    </div>
-</div>
-
-<div class="ui-layer-right">
-    <div class="stat-box">
-        <span class="stat-label">BEST</span>
-        <span class="stat-val" id="highScoreDisplay">0</span>
-    </div>
-</div>
-
-<div id="startScreen">
-    <h1>HALLWAY DASH</h1>
-    <p style="color:#6ea8fe; font-weight:bold;">TAP TO START</p>
-    <p style="opacity:0.5; font-size:0.8em; margin-top:20px">LEFT: SLIDE | RIGHT: JUMP</p>
-</div>
-
-<div id="gameOverModal">
-    <h2 style="color:#ff4757; margin:0; font-size: 2rem;">BUSTED!</h2>
-    <p id="deathReason" style="color:#bdc3c7; margin: 10px 0 20px 0; font-style: italic;">"Principal caught you."</p>
-    <div style="font-size: 3rem; font-weight: bold;" id="finalScore">0</div>
-    <div style="font-size: 0.8rem; opacity: 0.6; margin-bottom: 20px;">TOTAL SCORE</div>
-    <button id="retryBtn">TRY AGAIN</button>
-</div>
-
-<button class="manual-retry-btn" onclick="location.reload()">
-    <i class="fas fa-sync-alt"></i> Retry Connection
-</button>
-
-<script>
-// Auto-reconnect logic
-window.addEventListener('online', () => {
-    console.log('Connection restored. Reloading...');
-    location.reload();
-});
-
-(function() { 
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('scoreDisplay');
-const roomEl = document.getElementById('roomDisplay');
-const floorEl = document.getElementById('floorDisplay');
-const highScoreEl = document.getElementById('highScoreDisplay');
-const modal = document.getElementById('gameOverModal');
-const startScreen = document.getElementById('startScreen');
-const retryBtn = document.getElementById('retryBtn');
-const finalScoreEl = document.getElementById('finalScore');
-const deathReasonEl = document.getElementById('deathReason');
-
-const CONFIG = {
-    GRAVITY: 1.2,      
-    JUMP_FORCE: -20,   
-    SPEED_START: 8,        
-    SPEED_MAX: 20,         
-    GROUND_HEIGHT: 100,
-    ROOM_DISTANCE: 300     
-};
-
-const FAIL_MESSAGES = [
-    "Tripped on a wire!",
-    "Principal saw you running!",
-    "Late for the Exam!",
-    "ID Card Missing!",
-    "Caught by the Squad!"
-];
-
-let state = {
-    playing: false,
-    score: 0,
-    visualScore: 0, 
-    highScore: parseInt(localStorage.getItem('cc_hallway_hiscore')) || 0,
-    speed: CONFIG.SPEED_START,
-    frame: 0,
-    animDistance: 0, 
-    isGameOver: false,
-    roomNumber: 101,
-    floorNumber: 1,
-    nextRoomThreshold: CONFIG.ROOM_DISTANCE,
-    roomsClearedInFloor: 0,
-    bgHue: 220,
-    spawnMilestoneDoor: false 
-};
-
-highScoreEl.innerText = state.highScore;
-
-let cw,ch,groundY;
-
-// --- UPDATED RESIZE FUNCTION FOR MOBILE ZOOM ---
-function resize(){
-    const isMobile = innerWidth < 768;
-    const zoomFactor = isMobile ? 0.8 : 1; 
-    
-    cw = canvas.width = innerWidth / zoomFactor;
-    ch = canvas.height = innerHeight / zoomFactor;
-    
-    groundY = ch - CONFIG.GROUND_HEIGHT;
-    
-    if(!state.playing && !state.isGameOver) drawStaticScene();
-}
-addEventListener('resize',resize);
-
-const particles = [];
-function spawnDust(x, y, speed) {
-    for(let i=0; i<3; i++){
-        particles.push({
-            x: x, y: y,
-            vx: (Math.random() - 0.5) * 2 - speed,
-            vy: (Math.random() - 1) * 2,
-            life: 1.0,
-            size: Math.random() * 3 + 1
+    <script>
+        // Auto-reconnect logic
+        window.addEventListener('online', () => {
+            console.log('Connection restored. Reloading...');
+            location.reload();
         });
-    }
-}
-function updateAndDrawParticles() {
-    ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
-    for(let i=particles.length-1; i>=0; i--){
-        let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.05;
-        p.size *= 0.95;
-        
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-        ctx.fill();
-        
-        if(p.life <= 0) particles.splice(i, 1);
-    }
-}
 
-const bgObjects = [];
-function spawnBgObject() {
-    let type;
-    
-    if(state.spawnMilestoneDoor) {
-        type = 'milestone_door';
-        state.spawnMilestoneDoor = false; 
-    } else {
-        type = Math.random() > 0.7 ? 'pillar' : 'door';
-    }
+        (function () {
 
-    bgObjects.push({
-        x: cw + 50,
-        type: type,
-        label: "ROOM " + state.roomNumber 
-    });
-}
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const scoreEl = document.getElementById('scoreDisplay');
+            const roomEl = document.getElementById('roomDisplay');
+            const floorEl = document.getElementById('floorDisplay');
+            const highScoreEl = document.getElementById('highScoreDisplay');
+            const modal = document.getElementById('gameOverModal');
+            const startScreen = document.getElementById('startScreen');
+            const retryBtn = document.getElementById('retryBtn');
+            const finalScoreEl = document.getElementById('finalScore');
+            const deathReasonEl = document.getElementById('deathReason');
 
-function drawBackground() {
-    if(state.playing && state.frame % 40 === 0) spawnBgObject();
-
-    let hue = state.bgHue;
-    ctx.fillStyle = `hsl(${hue}, 30%, 15%)`; 
-    ctx.fillRect(0,0,cw,ch); 
-
-    ctx.fillStyle = `hsl(${hue}, 20%, 10%)`; 
-    ctx.textAlign = 'center';
-
-    for(let i=bgObjects.length-1; i>=0; i--){
-        let o = bgObjects[i];
-        if(state.playing) o.x -= state.speed * 0.5; 
-
-        if(o.type === 'pillar'){
-            ctx.fillRect(o.x, groundY - 200, 40, 200);
-        } else if (o.type === 'door') {
-            ctx.fillRect(o.x, groundY - 160, 2, 160); 
-            ctx.fillRect(o.x + 80, groundY - 160, 2, 160);
-            ctx.fillRect(o.x, groundY - 160, 82, 2); 
-            
-            ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.fillRect(o.x + 2, groundY - 160 + 2, 78, 158);
-            ctx.fillStyle = `hsl(${hue}, 20%, 10%)`; 
-
-        } else if (o.type === 'milestone_door') {
-            ctx.shadowBlur = 20; ctx.shadowColor = `hsl(${hue}, 80%, 60%)`; 
-            ctx.fillStyle = `hsl(${hue}, 40%, 20%)`; 
-            
-            ctx.fillRect(o.x, groundY - 180, 5, 180); 
-            ctx.fillRect(o.x + 90, groundY - 180, 5, 180);
-            ctx.fillRect(o.x, groundY - 180, 95, 5); 
-            
-            ctx.shadowBlur = 0;
-            
-            ctx.font = '900 24px Arial';
-            ctx.fillStyle = '#f1c40f'; 
-            ctx.fillText(o.label, o.x + 47, groundY - 200);
-            
-            ctx.fillStyle = 'rgba(241, 196, 15, 0.1)';
-            ctx.fillRect(o.x + 5, groundY - 175, 85, 175);
-            
-            ctx.fillStyle = `hsl(${hue}, 20%, 10%)`; 
-        }
-
-        if(o.x < -100) bgObjects.splice(i, 1);
-    }
-}
-
-const player = {
-    x:60,y:0,w:30,h:50,dy:0,grounded:false,crouching:false,
-    slideTimer: 0, 
-
-    draw(){
-        ctx.save();
-        ctx.translate(this.x, this.y);
-
-        const colors = {
-            skin: '#ffdfc4',        
-            hair: '#ff4757',        
-            shirt: '#8d6e63',       
-            shirtDark: '#5d4037', 
-            pants: '#2980b9',        
-            pantsDark: '#154360',
-            shoe: '#2c3e50',        
-            shoeSole: '#fff'
-        };
-
-        const t = -state.animDistance; 
-        
-        let bodyRot = 0.45; 
-        let bodyY = 0;
-        let neckRot = 0; 
-        const torsoLength = 28; 
-        
-        let thighL = 0, thighR = 0;
-        let calfL = 0, calfR = 0; 
-        let ankleL = 0, ankleR = 0;
-        let armL = 0, armR = 0;
-        let foreArmL = 2.0, foreArmR = 2.0;
-
-        if (this.crouching) {
-            let progress = Math.min(1, this.slideTimer / 8);
-            const ease = 1 - Math.pow(1 - progress, 3); 
-            const targetRot = -1.4; 
-            const targetY = 0;        
-            const targetNeckRot = 1.3; 
-            const targetThighR = 3.5; 
-            const targetCalfR = 0.1; 
-            const targetThighL = -0.2; 
-            const targetCalfL = 1.5;  
-            const targetArmL = -2.2; 
-            const targetArmR = -0.8; 
-            const startRot = 0.45;
-            const startY = 0;
-            const startNeckRot = 0; 
-            const startThighR = 0.5;
-            const startCalfR = 0.2;
-            const startThighL = -0.5;
-            const startCalfL = 0.2;
-            const startArmL = 1.0;
-            const startArmR = -1.0;
-            bodyRot = startRot + (targetRot - startRot) * ease;
-            bodyY = startY + (targetY - startY) * ease;
-            neckRot = startNeckRot + (targetNeckRot - startNeckRot) * ease;
-            thighR = startThighR + (targetThighR - startThighR) * ease;
-            calfR = startCalfR + (targetCalfR - startCalfR) * ease;
-            thighL = startThighL + (targetThighL - startThighL) * ease;
-            calfL = startCalfL + (targetCalfL - startCalfL) * ease;
-            armL = startArmL + (targetArmL - startArmL) * ease;
-            armR = startArmR + (targetArmR - startArmR) * ease;
-            foreArmL = 1.5; foreArmR = 1.5; 
-            if (this.slideTimer > 6) {
-                const vibe = Math.sin(Date.now() / 20) * 0.5;
-                bodyY += vibe;
-                thighR += vibe * 0.05; 
-            }
-        } else if (!this.grounded) {
-             neckRot = 0;
-            if (this.dy < -12) { bodyRot = 0.45; bodyY = -2; thighL = -1.1; calfL = 0.1; ankleL = 0.8; thighR = 1.9; calfR = 2.1; ankleR = 0.3; armL = -1.9; foreArmL = 0.8; armR = 1.3; foreArmR = 1.8; } 
-            else if (this.dy < -10) { bodyRot = 0.4; bodyY = -5; thighL = -0.5; calfL = 0.4; ankleL = 0.6; thighR = 2.0; calfR = 2.2; ankleR = 0.2; armL = -1.7; foreArmL = 1.0; armR = 1.2; foreArmR = 1.7; } 
-            else if (this.dy < -8) { bodyRot = 0.35; bodyY = -8; thighL = 0.1; calfL = 0.8; ankleL = 0.4; thighR = 2.1; calfR = 2.3; ankleR = 0.2; armL = -1.5; foreArmL = 1.2; armR = 1.0; foreArmR = 1.6; } 
-            else if (this.dy < -6) { bodyRot = 0.3; bodyY = -10; thighL = 0.8; calfL = 1.2; ankleL = 0.3; thighR = 2.1; calfR = 2.3; ankleR = 0.2; armL = -1.3; foreArmL = 1.4; armR = 0.9; foreArmR = 1.5; } 
-            else if (this.dy < -4) { bodyRot = 0.25; bodyY = -12; thighL = 1.4; calfL = 1.8; ankleL = 0.3; thighR = 2.2; calfR = 2.4; ankleR = 0.2; armL = -1.1; foreArmL = 1.6; armR = 0.8; foreArmR = 1.4; } 
-            else if (this.dy < -1) { bodyRot = 0.2; bodyY = -14; thighL = 1.9; calfL = 2.2; ankleL = 0.2; thighR = 2.3; calfR = 2.5; ankleR = 0.2; armL = -0.9; foreArmL = 1.7; armR = 0.5; foreArmR = 1.3; } 
-            else if (this.dy < 1) { bodyRot = 0.15; bodyY = -15; thighL = 2.4; calfL = 2.6; ankleL = 0.2; thighR = 2.4; calfR = 2.6; ankleR = 0.2; armL = -0.7; foreArmL = 1.8; armR = -0.7; foreArmR = 1.8; } 
-            else if (this.dy < 4) { bodyRot = 0.12; bodyY = -14; thighL = 2.2; calfL = 2.4; ankleL = 0.2; thighR = 2.2; calfR = 2.4; ankleR = 0.2; armL = -0.8; foreArmL = 1.7; armR = 0.3; foreArmR = 1.7; } 
-            else if (this.dy < 7) { bodyRot = 0.15; bodyY = -12; thighL = 1.8; calfL = 1.8; ankleL = 0.3; thighR = 1.8; calfR = 1.8; ankleR = 0.3; armL = -1.0; foreArmL = 1.5; armR = 0.5; foreArmR = 1.5; } 
-            else if (this.dy < 10) { bodyRot = 0.18; bodyY = -9; thighL = 1.3; calfL = 1.0; ankleL = 0.4; thighR = 1.3; calfR = 1.0; ankleR = 0.4; armL = -1.2; foreArmL = 1.2; armR = 0.8; foreArmR = 1.2; } 
-            else if (this.dy < 13) { bodyRot = 0.2; bodyY = -6; thighL = 0.7; calfL = 0.4; ankleL = 0.5; thighR = 0.7; calfR = 0.4; ankleR = 0.5; armL = -1.4; foreArmL = 0.8; armR = 1.0; foreArmR = 0.8; } 
-            else { bodyRot = 0.1; bodyY = -3; thighL = 0.2; calfL = 0.1; ankleL = 0.3; thighR = 0.2; calfR = 0.1; ankleR = 0.3; armL = -1.6; foreArmL = 0.3; armR = -1.5; foreArmR = 0.3; }
-        } else if (state.playing) {
-            neckRot = 0;
-            
-            bodyY = Math.cos(t * 2) * 2 - Math.abs(Math.sin(t * 2)) * 1.5; 
-            bodyRot = 0.45 + Math.sin(t) * 0.08; 
-            
-            const strideAmp = 1.3; 
-            
-            const getThigh = (p) => Math.sin(p) * strideAmp + Math.sin(p * 2) * 0.15;
-            thighL = getThigh(t);
-            thighR = getThigh(t + Math.PI);
-            
-            const getCalf = (p) => { 
-                const base = Math.cos(p);
-                if(base > 0) return 0.1; 
-                return 0.1 + Math.pow(Math.abs(base), 1.5) * 2.8; 
+            const CONFIG = {
+                GRAVITY: 1.2,
+                JUMP_FORCE: -20,
+                SPEED_START: 8,
+                SPEED_MAX: 20,
+                GROUND_HEIGHT: 100,
+                ROOM_DISTANCE: 300
             };
-            
-            calfL = getCalf(t);
-            calfR = getCalf(t + Math.PI);
-            
-            const getAnkle = (p) => { 
-                const phase = -Math.sin(p + 0.8); 
-                
-                if(phase > 0) {
-                    return 0.8 * phase; 
-                } else {
-                    return -0.4 * Math.abs(phase);
+
+            const FAIL_MESSAGES = [
+                "Tripped on a wire!",
+                "Principal saw you running!",
+                "Late for the Exam!",
+                "ID Card Missing!",
+                "Caught by the Squad!"
+            ];
+
+            let state = {
+                playing: false,
+                score: 0,
+                visualScore: 0,
+                highScore: parseInt(localStorage.getItem('cc_hallway_hiscore')) || 0,
+                speed: CONFIG.SPEED_START,
+                frame: 0,
+                animDistance: 0,
+                isGameOver: false,
+                roomNumber: 101,
+                floorNumber: 1,
+                nextRoomThreshold: CONFIG.ROOM_DISTANCE,
+                roomsClearedInFloor: 0,
+                bgHue: 220,
+                spawnMilestoneDoor: false
+            };
+
+            highScoreEl.innerText = state.highScore;
+
+            let cw, ch, groundY;
+
+            // --- UPDATED RESIZE FUNCTION FOR MOBILE ZOOM ---
+            function resize() {
+                const isMobile = innerWidth < 768;
+                const zoomFactor = isMobile ? 0.8 : 1;
+
+                cw = canvas.width = innerWidth / zoomFactor;
+                ch = canvas.height = innerHeight / zoomFactor;
+
+                groundY = ch - CONFIG.GROUND_HEIGHT;
+
+                if (!state.playing && !state.isGameOver) drawStaticScene();
+            }
+            addEventListener('resize', resize);
+
+            const particles = [];
+            function spawnDust(x, y, speed) {
+                for (let i = 0; i < 3; i++) {
+                    particles.push({
+                        x: x, y: y,
+                        vx: (Math.random() - 0.5) * 2 - speed,
+                        vy: (Math.random() - 1) * 2,
+                        life: 1.0,
+                        size: Math.random() * 3 + 1
+                    });
                 }
-            };
-            ankleL = getAnkle(t);
-            ankleR = getAnkle(t + Math.PI);
-            
-            armL = Math.sin(t + Math.PI + 0.3) * 1.4;
-            foreArmL = 1.8 + Math.sin(t * 2) * 0.2; 
-            armR = Math.sin(t + 0.3) * 1.4;
-            foreArmR = 1.8 + Math.sin(t * 2 + Math.PI) * 0.2; 
-            
-            if(Math.sin(t) > 0.95 || Math.sin(t + Math.PI) > 0.95) spawnDust(this.x, groundY, state.speed);
-        } else {
-            neckRot = 0; bodyRot = 0.1; bodyY = Math.sin(Date.now()/300)*1.5;
-            thighL = 0.1; calfL = 0.1; thighR = -0.1; calfR = 0.1;
-            armL = 0.2; foreArmL = 0.5; armR = -0.2; foreArmR = 0.5;
-        }
-
-        const drawLimb = (ox, oy, l1, l2, a1, bend, ankleRot, color, isLeg) => {
-            ctx.strokeStyle = color; ctx.lineWidth = isLeg ? 6 : 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-            ctx.beginPath(); ctx.moveTo(ox, oy);
-            const kx = ox + Math.sin(a1) * l1; const ky = oy + Math.cos(a1) * l1;
-            ctx.lineTo(kx, ky);
-            const jointAngle = isLeg ? (a1 - bend) : (a1 + bend); 
-            const fx = kx + Math.sin(jointAngle) * l2; const fy = ky + Math.cos(jointAngle) * l2;
-            ctx.lineTo(fx, fy); ctx.stroke();
-            if (isLeg) {
-                ctx.save(); ctx.translate(fx, fy); ctx.rotate(jointAngle + ankleRot + 0.3); 
-                ctx.fillStyle = colors.shoe; ctx.beginPath(); ctx.ellipse(2, 3, 6, 3, 0, 0, Math.PI*2); ctx.fill();
-                ctx.fillStyle = colors.shoeSole; ctx.fillRect(-2, 5, 10, 2); 
-                ctx.beginPath(); ctx.arc(7, 4, 3, 0, Math.PI*2); ctx.fill(); ctx.restore();
-            } else {
-                ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI*2); ctx.fill();
             }
-        };
+            function updateAndDrawParticles() {
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    let p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.life -= 0.05;
+                    p.size *= 0.95;
 
-        const centerX = 15; const hipY = 28 + bodyY; const hipX = centerX - (Math.sin(bodyRot)*3);
-        const shoulderX = hipX + Math.sin(bodyRot) * torsoLength; const shoulderY = hipY - Math.cos(bodyRot) * torsoLength;
-        const lenThigh = 15, lenCalf = 15; const lenArm = 12, lenForeArm = 12;
-
-        drawLimb(shoulderX - 4, shoulderY, lenArm, lenForeArm, armL + bodyRot, foreArmL, 0, colors.shirtDark, false);
-        drawLimb(hipX - 3, hipY, lenThigh, lenCalf, thighL + bodyRot, calfL, ankleL, colors.pantsDark, true);
-
-        ctx.save(); ctx.translate(hipX, hipY); ctx.rotate(bodyRot);
-        ctx.fillStyle = colors.shirt; ctx.beginPath(); ctx.moveTo(-6, 3); ctx.lineTo(6, 3);  
-        ctx.lineTo(7, -torsoLength + 2); ctx.quadraticCurveTo(0, -torsoLength - 4, -7, -torsoLength + 2); 
-        ctx.lineTo(-6, 3); ctx.fill();
-        ctx.fillStyle = colors.shirtDark; ctx.fillRect(-6, 0, 12, 5);
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(5, -10); ctx.moveTo(-6, -18); ctx.lineTo(6, -18); ctx.stroke(); ctx.restore();
-
-        const headBaseAngle = bodyRot + neckRot;
-        const headX = shoulderX + Math.sin(headBaseAngle) * 8; 
-        const headY = shoulderY - 8 - Math.cos(headBaseAngle) * 8;
-        
-        ctx.save(); ctx.translate(headX, headY); ctx.rotate(headBaseAngle); 
-        ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-18, 2); ctx.lineTo(-8, 4); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(-4, -10); ctx.lineTo(2, -19); ctx.lineTo(8, -9); ctx.fill();
-        ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(2, 1, 8, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(5, 0, 1.5, 3, 0, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(4, 4, 2, 0, Math.PI/2, false); ctx.stroke();
-        ctx.restore(); 
-
-        drawLimb(hipX + 3, hipY, lenThigh, lenCalf, thighR + bodyRot, calfR, ankleR, colors.pants, true); 
-        drawLimb(shoulderX + 4, shoulderY, lenArm, lenForeArm, armR + bodyRot, foreArmR, 0, colors.shirt, false); 
-
-        ctx.restore();
-    },
-
-    update(){
-        this.dy += CONFIG.GRAVITY;
-        this.y += this.dy;
-        if(this.y+this.h>groundY){
-            if(!this.grounded && state.playing) spawnDust(this.x, groundY, state.speed); 
-            this.y = groundY-this.h;
-            this.dy=0;
-            this.grounded=true;
-        }else this.grounded=false;
-        
-        if(this.crouching) this.slideTimer++;
-        else this.slideTimer = 0;
-    },
-
-    jump(){
-        if(this.grounded && !this.crouching){
-            this.dy = CONFIG.JUMP_FORCE;
-            this.grounded=false;
-            spawnDust(this.x, groundY, state.speed);
-        }
-    },
-    
-    cutJump(){
-        if(this.dy < -5) this.dy = -5;
-    },
-
-    fastFall(){
-        if(!this.grounded) {
-            this.dy = 25; 
-            this.crouching = true; 
-        } else {
-            this.crouch();
-        }
-    },
-
-    crouch(){
-        if(this.grounded){
-            this.crouching=true;
-            this.h=30; 
-            this.w=20;
-            spawnDust(this.x, groundY, state.speed);
-        }
-    },
-
-    standUp(){
-        this.crouching=false;
-        this.h=50; 
-        this.w=30;
-    }
-};
-
-const obstacles=[];
-
-class Obstacle{
-    constructor(){this.active=false;}
-
-    spawn(x,type){
-        this.active=true;
-        this.x=x;
-        this.type=type;
-        this.passed = false; 
-
-        if(type==='bench'){
-            this.w=70; this.h=35;
-            this.y=groundY-this.h;
-        }else{
-            this.w=6; 
-            this.h=ch;
-            this.y=0;
-            this.safeGap = groundY - 80;
-        }
-    }
-
-    draw(){
-        if(!this.active)return;
-        ctx.save();
-        ctx.translate(this.x,this.y);
-
-        if(this.type==='bench'){
-            ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(231, 76, 60, 0.5)';
-            
-            // --- DETAILED REALISTIC BROKEN BENCH (Hinged Side) ---
-            
-            // 1. Solid Left Leg
-            ctx.fillStyle='#95a5a6';
-            ctx.fillRect(5, 8, 8, 27);
-
-            // 2. Fallen Bottom of Right Leg (On Ground)
-            ctx.save();
-            ctx.translate(this.w - 5, 32); 
-            ctx.rotate(1.3);
-            ctx.fillRect(0, 0, 8, 18);
-            ctx.restore();
-
-            // 3. Left Half of Seat (Intact)
-            ctx.fillStyle='#e74c3c';
-            ctx.beginPath();
-            ctx.moveTo(0,0);
-            ctx.lineTo(this.w/2, 0);
-            ctx.lineTo(this.w/2 + 2, 8); // Jagged break
-            ctx.lineTo(0, 8);
-            ctx.fill();
-
-            // 4. Right Half of Seat (Collapsing Downwards)
-            ctx.save();
-            ctx.translate(this.w/2, 0); // Pivot at the break point
-            ctx.rotate(0.4); // ROTATE DOWNWARDS ~23 degrees to touch debris
-
-            // Draw the slanted seat segment
-            ctx.fillStyle='#e74c3c'; 
-            ctx.fillRect(0, 0, this.w/2, 8);
-
-            // Draw the broken top leg stump ATTACHED to this slanted seat
-            ctx.fillStyle='#95a5a6'; 
-            // Position relative to the rotated seat
-            ctx.fillRect(this.w/2 - 13, 8, 8, 12); 
-
-            ctx.restore();
-            
-            ctx.shadowBlur=0;
-
-        }else{
-            ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(241, 196, 15, 0.6)';
-            ctx.strokeStyle='#f1c40f';
-            ctx.lineWidth=4; 
-            ctx.beginPath();
-            
-            const ceilingY = groundY - 250; 
-            
-            ctx.moveTo(3, ceilingY); 
-            ctx.lineTo(3, this.safeGap);
-            ctx.stroke();
-            ctx.shadowBlur=0;
-            
-            ctx.fillStyle = '#444';
-            ctx.fillRect(-2, ceilingY, 10, 10);
-            
-            if(state.playing && Math.random() > 0.7){ 
-                ctx.save();
-                ctx.translate(3, this.safeGap); 
-                
-                ctx.shadowBlur = 20; 
-                ctx.shadowColor = '#fff';
-                ctx.fillStyle = Math.random() > 0.5 ? '#ffff00' : '#ffffff';
-                
-                const size = Math.random() * 5 + 3; 
-                ctx.beginPath();
-                ctx.arc(0, 0, size, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1;
-                for(let k=0; k<4; k++) {
                     ctx.beginPath();
-                    ctx.moveTo(0,0);
-                    const angle = Math.random() * Math.PI * 2;
-                    ctx.lineTo(Math.cos(angle)*15, Math.sin(angle)*15);
-                    ctx.stroke();
-                }
-                
-                ctx.restore();
-            }
-        }
-        ctx.restore();
-    }
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
 
-    update(){
-        this.x -= state.speed;
-        if(this.x+this.w<0)this.active=false;
-        
-        if(!this.passed && this.x + this.w < player.x){
-            this.passed = true;
-            
-            let reward = 0;
-            
-            if (this.type === 'bench') {
-                const gap = this.y - (player.y + player.h);
-                if (gap > 0 && gap < 90 && player.dy < 10) { 
-                    reward = 25; 
+                    if (p.life <= 0) particles.splice(i, 1);
                 }
-            } else {
-                if (player.crouching) {
-                    if(player.slideTimer < 15) {
-                        reward = 15; 
+            }
+
+            const bgObjects = [];
+            function spawnBgObject() {
+                let type;
+
+                if (state.spawnMilestoneDoor) {
+                    type = 'milestone_door';
+                    state.spawnMilestoneDoor = false;
+                } else {
+                    type = Math.random() > 0.7 ? 'pillar' : 'door';
+                }
+
+                bgObjects.push({
+                    x: cw + 50,
+                    type: type,
+                    label: "ROOM " + state.roomNumber
+                });
+            }
+
+            function drawBackground() {
+                if (state.playing && state.frame % 40 === 0) spawnBgObject();
+
+                let hue = state.bgHue;
+                ctx.fillStyle = `hsl(${hue}, 30%, 15%)`;
+                ctx.fillRect(0, 0, cw, ch);
+
+                ctx.fillStyle = `hsl(${hue}, 20%, 10%)`;
+                ctx.textAlign = 'center';
+
+                for (let i = bgObjects.length - 1; i >= 0; i--) {
+                    let o = bgObjects[i];
+                    if (state.playing) o.x -= state.speed * 0.5;
+
+                    if (o.type === 'pillar') {
+                        ctx.fillRect(o.x, groundY - 200, 40, 200);
+                    } else if (o.type === 'door') {
+                        ctx.fillRect(o.x, groundY - 160, 2, 160);
+                        ctx.fillRect(o.x + 80, groundY - 160, 2, 160);
+                        ctx.fillRect(o.x, groundY - 160, 82, 2);
+
+                        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                        ctx.fillRect(o.x + 2, groundY - 160 + 2, 78, 158);
+                        ctx.fillStyle = `hsl(${hue}, 20%, 10%)`;
+
+                    } else if (o.type === 'milestone_door') {
+                        ctx.shadowBlur = 20; ctx.shadowColor = `hsl(${hue}, 80%, 60%)`;
+                        ctx.fillStyle = `hsl(${hue}, 40%, 20%)`;
+
+                        ctx.fillRect(o.x, groundY - 180, 5, 180);
+                        ctx.fillRect(o.x + 90, groundY - 180, 5, 180);
+                        ctx.fillRect(o.x, groundY - 180, 95, 5);
+
+                        ctx.shadowBlur = 0;
+
+                        ctx.font = '900 24px Arial';
+                        ctx.fillStyle = '#f1c40f';
+                        ctx.fillText(o.label, o.x + 47, groundY - 200);
+
+                        ctx.fillStyle = 'rgba(241, 196, 15, 0.1)';
+                        ctx.fillRect(o.x + 5, groundY - 175, 85, 175);
+
+                        ctx.fillStyle = `hsl(${hue}, 20%, 10%)`;
+                    }
+
+                    if (o.x < -100) bgObjects.splice(i, 1);
+                }
+            }
+
+            const player = {
+                x: 60, y: 0, w: 30, h: 50, dy: 0, grounded: false, crouching: false,
+                slideTimer: 0,
+
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+
+                    const colors = {
+                        skin: '#ffdfc4',
+                        hair: '#ff4757',
+                        shirt: '#8d6e63',
+                        shirtDark: '#5d4037',
+                        pants: '#2980b9',
+                        pantsDark: '#154360',
+                        shoe: '#2c3e50',
+                        shoeSole: '#fff'
+                    };
+
+                    const t = -state.animDistance;
+
+                    let bodyRot = 0.45;
+                    let bodyY = 0;
+                    let neckRot = 0;
+                    const torsoLength = 28;
+
+                    let thighL = 0, thighR = 0;
+                    let calfL = 0, calfR = 0;
+                    let ankleL = 0, ankleR = 0;
+                    let armL = 0, armR = 0;
+                    let foreArmL = 2.0, foreArmR = 2.0;
+
+                    if (this.crouching) {
+                        let progress = Math.min(1, this.slideTimer / 8);
+                        const ease = 1 - Math.pow(1 - progress, 3);
+                        const targetRot = -1.4;
+                        const targetY = 0;
+                        const targetNeckRot = 1.3;
+                        const targetThighR = 3.5;
+                        const targetCalfR = 0.1;
+                        const targetThighL = -0.2;
+                        const targetCalfL = 1.5;
+                        const targetArmL = -2.2;
+                        const targetArmR = -0.8;
+                        const startRot = 0.45;
+                        const startY = 0;
+                        const startNeckRot = 0;
+                        const startThighR = 0.5;
+                        const startCalfR = 0.2;
+                        const startThighL = -0.5;
+                        const startCalfL = 0.2;
+                        const startArmL = 1.0;
+                        const startArmR = -1.0;
+                        bodyRot = startRot + (targetRot - startRot) * ease;
+                        bodyY = startY + (targetY - startY) * ease;
+                        neckRot = startNeckRot + (targetNeckRot - startNeckRot) * ease;
+                        thighR = startThighR + (targetThighR - startThighR) * ease;
+                        calfR = startCalfR + (targetCalfR - startCalfR) * ease;
+                        thighL = startThighL + (targetThighL - startThighL) * ease;
+                        calfL = startCalfL + (targetCalfL - startCalfL) * ease;
+                        armL = startArmL + (targetArmL - startArmL) * ease;
+                        armR = startArmR + (targetArmR - startArmR) * ease;
+                        foreArmL = 1.5; foreArmR = 1.5;
+                        if (this.slideTimer > 6) {
+                            const vibe = Math.sin(Date.now() / 20) * 0.5;
+                            bodyY += vibe;
+                            thighR += vibe * 0.05;
+                        }
+                    } else if (!this.grounded) {
+                        neckRot = 0;
+                        if (this.dy < -12) { bodyRot = 0.45; bodyY = -2; thighL = -1.1; calfL = 0.1; ankleL = 0.8; thighR = 1.9; calfR = 2.1; ankleR = 0.3; armL = -1.9; foreArmL = 0.8; armR = 1.3; foreArmR = 1.8; }
+                        else if (this.dy < -10) { bodyRot = 0.4; bodyY = -5; thighL = -0.5; calfL = 0.4; ankleL = 0.6; thighR = 2.0; calfR = 2.2; ankleR = 0.2; armL = -1.7; foreArmL = 1.0; armR = 1.2; foreArmR = 1.7; }
+                        else if (this.dy < -8) { bodyRot = 0.35; bodyY = -8; thighL = 0.1; calfL = 0.8; ankleL = 0.4; thighR = 2.1; calfR = 2.3; ankleR = 0.2; armL = -1.5; foreArmL = 1.2; armR = 1.0; foreArmR = 1.6; }
+                        else if (this.dy < -6) { bodyRot = 0.3; bodyY = -10; thighL = 0.8; calfL = 1.2; ankleL = 0.3; thighR = 2.1; calfR = 2.3; ankleR = 0.2; armL = -1.3; foreArmL = 1.4; armR = 0.9; foreArmR = 1.5; }
+                        else if (this.dy < -4) { bodyRot = 0.25; bodyY = -12; thighL = 1.4; calfL = 1.8; ankleL = 0.3; thighR = 2.2; calfR = 2.4; ankleR = 0.2; armL = -1.1; foreArmL = 1.6; armR = 0.8; foreArmR = 1.4; }
+                        else if (this.dy < -1) { bodyRot = 0.2; bodyY = -14; thighL = 1.9; calfL = 2.2; ankleL = 0.2; thighR = 2.3; calfR = 2.5; ankleR = 0.2; armL = -0.9; foreArmL = 1.7; armR = 0.5; foreArmR = 1.3; }
+                        else if (this.dy < 1) { bodyRot = 0.15; bodyY = -15; thighL = 2.4; calfL = 2.6; ankleL = 0.2; thighR = 2.4; calfR = 2.6; ankleR = 0.2; armL = -0.7; foreArmL = 1.8; armR = -0.7; foreArmR = 1.8; }
+                        else if (this.dy < 4) { bodyRot = 0.12; bodyY = -14; thighL = 2.2; calfL = 2.4; ankleL = 0.2; thighR = 2.2; calfR = 2.4; ankleR = 0.2; armL = -0.8; foreArmL = 1.7; armR = 0.3; foreArmR = 1.7; }
+                        else if (this.dy < 7) { bodyRot = 0.15; bodyY = -12; thighL = 1.8; calfL = 1.8; ankleL = 0.3; thighR = 1.8; calfR = 1.8; ankleR = 0.3; armL = -1.0; foreArmL = 1.5; armR = 0.5; foreArmR = 1.5; }
+                        else if (this.dy < 10) { bodyRot = 0.18; bodyY = -9; thighL = 1.3; calfL = 1.0; ankleL = 0.4; thighR = 1.3; calfR = 1.0; ankleR = 0.4; armL = -1.2; foreArmL = 1.2; armR = 0.8; foreArmR = 1.2; }
+                        else if (this.dy < 13) { bodyRot = 0.2; bodyY = -6; thighL = 0.7; calfL = 0.4; ankleL = 0.5; thighR = 0.7; calfR = 0.4; ankleR = 0.5; armL = -1.4; foreArmL = 0.8; armR = 1.0; foreArmR = 0.8; }
+                        else { bodyRot = 0.1; bodyY = -3; thighL = 0.2; calfL = 0.1; ankleL = 0.3; thighR = 0.2; calfR = 0.1; ankleR = 0.3; armL = -1.6; foreArmL = 0.3; armR = -1.5; foreArmR = 0.3; }
+                    } else if (state.playing) {
+                        neckRot = 0;
+
+                        bodyY = Math.cos(t * 2) * 2 - Math.abs(Math.sin(t * 2)) * 1.5;
+                        bodyRot = 0.45 + Math.sin(t) * 0.08;
+
+                        const strideAmp = 1.3;
+
+                        const getThigh = (p) => Math.sin(p) * strideAmp + Math.sin(p * 2) * 0.15;
+                        thighL = getThigh(t);
+                        thighR = getThigh(t + Math.PI);
+
+                        const getCalf = (p) => {
+                            const base = Math.cos(p);
+                            if (base > 0) return 0.1;
+                            return 0.1 + Math.pow(Math.abs(base), 1.5) * 2.8;
+                        };
+
+                        calfL = getCalf(t);
+                        calfR = getCalf(t + Math.PI);
+
+                        const getAnkle = (p) => {
+                            const phase = -Math.sin(p + 0.8);
+
+                            if (phase > 0) {
+                                return 0.8 * phase;
+                            } else {
+                                return -0.4 * Math.abs(phase);
+                            }
+                        };
+                        ankleL = getAnkle(t);
+                        ankleR = getAnkle(t + Math.PI);
+
+                        armL = Math.sin(t + Math.PI + 0.3) * 1.4;
+                        foreArmL = 1.8 + Math.sin(t * 2) * 0.2;
+                        armR = Math.sin(t + 0.3) * 1.4;
+                        foreArmR = 1.8 + Math.sin(t * 2 + Math.PI) * 0.2;
+
+                        if (Math.sin(t) > 0.95 || Math.sin(t + Math.PI) > 0.95) spawnDust(this.x, groundY, state.speed);
+                    } else {
+                        neckRot = 0; bodyRot = 0.1; bodyY = Math.sin(Date.now() / 300) * 1.5;
+                        thighL = 0.1; calfL = 0.1; thighR = -0.1; calfR = 0.1;
+                        armL = 0.2; foreArmL = 0.5; armR = -0.2; foreArmR = 0.5;
+                    }
+
+                    const drawLimb = (ox, oy, l1, l2, a1, bend, ankleRot, color, isLeg) => {
+                        ctx.strokeStyle = color; ctx.lineWidth = isLeg ? 6 : 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                        ctx.beginPath(); ctx.moveTo(ox, oy);
+                        const kx = ox + Math.sin(a1) * l1; const ky = oy + Math.cos(a1) * l1;
+                        ctx.lineTo(kx, ky);
+                        const jointAngle = isLeg ? (a1 - bend) : (a1 + bend);
+                        const fx = kx + Math.sin(jointAngle) * l2; const fy = ky + Math.cos(jointAngle) * l2;
+                        ctx.lineTo(fx, fy); ctx.stroke();
+                        if (isLeg) {
+                            ctx.save(); ctx.translate(fx, fy); ctx.rotate(jointAngle + ankleRot + 0.3);
+                            ctx.fillStyle = colors.shoe; ctx.beginPath(); ctx.ellipse(2, 3, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+                            ctx.fillStyle = colors.shoeSole; ctx.fillRect(-2, 5, 10, 2);
+                            ctx.beginPath(); ctx.arc(7, 4, 3, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+                        } else {
+                            ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
+                        }
+                    };
+
+                    const centerX = 15; const hipY = 28 + bodyY; const hipX = centerX - (Math.sin(bodyRot) * 3);
+                    const shoulderX = hipX + Math.sin(bodyRot) * torsoLength; const shoulderY = hipY - Math.cos(bodyRot) * torsoLength;
+                    const lenThigh = 15, lenCalf = 15; const lenArm = 12, lenForeArm = 12;
+
+                    drawLimb(shoulderX - 4, shoulderY, lenArm, lenForeArm, armL + bodyRot, foreArmL, 0, colors.shirtDark, false);
+                    drawLimb(hipX - 3, hipY, lenThigh, lenCalf, thighL + bodyRot, calfL, ankleL, colors.pantsDark, true);
+
+                    ctx.save(); ctx.translate(hipX, hipY); ctx.rotate(bodyRot);
+                    ctx.fillStyle = colors.shirt; ctx.beginPath(); ctx.moveTo(-6, 3); ctx.lineTo(6, 3);
+                    ctx.lineTo(7, -torsoLength + 2); ctx.quadraticCurveTo(0, -torsoLength - 4, -7, -torsoLength + 2);
+                    ctx.lineTo(-6, 3); ctx.fill();
+                    ctx.fillStyle = colors.shirtDark; ctx.fillRect(-6, 0, 12, 5);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(5, -10); ctx.moveTo(-6, -18); ctx.lineTo(6, -18); ctx.stroke(); ctx.restore();
+
+                    const headBaseAngle = bodyRot + neckRot;
+                    const headX = shoulderX + Math.sin(headBaseAngle) * 8;
+                    const headY = shoulderY - 8 - Math.cos(headBaseAngle) * 8;
+
+                    ctx.save(); ctx.translate(headX, headY); ctx.rotate(headBaseAngle);
+                    ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-18, 2); ctx.lineTo(-8, 4); ctx.fill();
+                    ctx.beginPath(); ctx.moveTo(-4, -10); ctx.lineTo(2, -19); ctx.lineTo(8, -9); ctx.fill();
+                    ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(2, 1, 8, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(5, 0, 1.5, 3, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(4, 4, 2, 0, Math.PI / 2, false); ctx.stroke();
+                    ctx.restore();
+
+                    drawLimb(hipX + 3, hipY, lenThigh, lenCalf, thighR + bodyRot, calfR, ankleR, colors.pants, true);
+                    drawLimb(shoulderX + 4, shoulderY, lenArm, lenForeArm, armR + bodyRot, foreArmR, 0, colors.shirt, false);
+
+                    ctx.restore();
+                },
+
+                update() {
+                    this.dy += CONFIG.GRAVITY;
+                    this.y += this.dy;
+                    if (this.y + this.h > groundY) {
+                        if (!this.grounded && state.playing) spawnDust(this.x, groundY, state.speed);
+                        this.y = groundY - this.h;
+                        this.dy = 0;
+                        this.grounded = true;
+                    } else this.grounded = false;
+
+                    if (this.crouching) this.slideTimer++;
+                    else this.slideTimer = 0;
+                },
+
+                jump() {
+                    if (this.grounded && !this.crouching) {
+                        this.dy = CONFIG.JUMP_FORCE;
+                        this.grounded = false;
+                        spawnDust(this.x, groundY, state.speed);
+                    }
+                },
+
+                cutJump() {
+                    if (this.dy < -5) this.dy = -5;
+                },
+
+                fastFall() {
+                    if (!this.grounded) {
+                        this.dy = 25;
+                        this.crouching = true;
+                    } else {
+                        this.crouch();
+                    }
+                },
+
+                crouch() {
+                    if (this.grounded) {
+                        this.crouching = true;
+                        this.h = 30;
+                        this.w = 20;
+                        spawnDust(this.x, groundY, state.speed);
+                    }
+                },
+
+                standUp() {
+                    this.crouching = false;
+                    this.h = 50;
+                    this.w = 30;
+                }
+            };
+
+            const obstacles = [];
+
+            class Obstacle {
+                constructor() { this.active = false; }
+
+                spawn(x, type) {
+                    this.active = true;
+                    this.x = x;
+                    this.type = type;
+                    this.passed = false;
+
+                    if (type === 'bench') {
+                        this.w = 70; this.h = 35;
+                        this.y = groundY - this.h;
+                    } else {
+                        this.w = 6;
+                        this.h = ch;
+                        this.y = 0;
+                        this.safeGap = groundY - 80;
+                    }
+                }
+
+                draw() {
+                    if (!this.active) return;
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+
+                    if (this.type === 'bench') {
+                        ctx.shadowBlur = 10; ctx.shadowColor = 'rgba(231, 76, 60, 0.5)';
+
+                        // --- DETAILED REALISTIC BROKEN BENCH (Hinged Side) ---
+
+                        // 1. Solid Left Leg
+                        ctx.fillStyle = '#95a5a6';
+                        ctx.fillRect(5, 8, 8, 27);
+
+                        // 2. Fallen Bottom of Right Leg (On Ground)
+                        ctx.save();
+                        ctx.translate(this.w - 5, 32);
+                        ctx.rotate(1.3);
+                        ctx.fillRect(0, 0, 8, 18);
+                        ctx.restore();
+
+                        // 3. Left Half of Seat (Intact)
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(this.w / 2, 0);
+                        ctx.lineTo(this.w / 2 + 2, 8); // Jagged break
+                        ctx.lineTo(0, 8);
+                        ctx.fill();
+
+                        // 4. Right Half of Seat (Collapsing Downwards)
+                        ctx.save();
+                        ctx.translate(this.w / 2, 0); // Pivot at the break point
+                        ctx.rotate(0.4); // ROTATE DOWNWARDS ~23 degrees to touch debris
+
+                        // Draw the slanted seat segment
+                        ctx.fillStyle = '#e74c3c';
+                        ctx.fillRect(0, 0, this.w / 2, 8);
+
+                        // Draw the broken top leg stump ATTACHED to this slanted seat
+                        ctx.fillStyle = '#95a5a6';
+                        // Position relative to the rotated seat
+                        ctx.fillRect(this.w / 2 - 13, 8, 8, 12);
+
+                        ctx.restore();
+
+                        ctx.shadowBlur = 0;
+
+                    } else {
+                        ctx.shadowBlur = 15; ctx.shadowColor = 'rgba(241, 196, 15, 0.6)';
+                        ctx.strokeStyle = '#f1c40f';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+
+                        const ceilingY = groundY - 250;
+
+                        ctx.moveTo(3, ceilingY);
+                        ctx.lineTo(3, this.safeGap);
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+
+                        ctx.fillStyle = '#444';
+                        ctx.fillRect(-2, ceilingY, 10, 10);
+
+                        if (state.playing && Math.random() > 0.7) {
+                            ctx.save();
+                            ctx.translate(3, this.safeGap);
+
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = '#fff';
+                            ctx.fillStyle = Math.random() > 0.5 ? '#ffff00' : '#ffffff';
+
+                            const size = Math.random() * 5 + 3;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, size, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            ctx.strokeStyle = '#fff';
+                            ctx.lineWidth = 1;
+                            for (let k = 0; k < 4; k++) {
+                                ctx.beginPath();
+                                ctx.moveTo(0, 0);
+                                const angle = Math.random() * Math.PI * 2;
+                                ctx.lineTo(Math.cos(angle) * 15, Math.sin(angle) * 15);
+                                ctx.stroke();
+                            }
+
+                            ctx.restore();
+                        }
+                    }
+                    ctx.restore();
+                }
+
+                update() {
+                    this.x -= state.speed;
+                    if (this.x + this.w < 0) this.active = false;
+
+                    if (!this.passed && this.x + this.w < player.x) {
+                        this.passed = true;
+
+                        let reward = 0;
+
+                        if (this.type === 'bench') {
+                            const gap = this.y - (player.y + player.h);
+                            if (gap > 0 && gap < 90 && player.dy < 10) {
+                                reward = 25;
+                            }
+                        } else {
+                            if (player.crouching) {
+                                if (player.slideTimer < 15) {
+                                    reward = 15;
+                                }
+                            }
+                        }
+
+                        if (reward > 0) {
+                            state.score += reward;
+                            state.visualScore = Math.floor(state.score);
+                            scoreEl.innerText = state.visualScore;
+                            showFloatingText("CLOSE CALL! +" + reward, player.x, player.y - 40, 'bonus');
+                        }
                     }
                 }
             }
 
-            if(reward > 0) {
-                state.score += reward;
-                state.visualScore = Math.floor(state.score); 
-                scoreEl.innerText = state.visualScore; 
-                showFloatingText("CLOSE CALL! +" + reward, player.x, player.y - 40, 'bonus');
-            }
-        }
-    }
-}
+            function showFloatingText(text, x, y, type) {
+                const el = document.createElement('div');
+                el.className = 'floating-text';
 
-function showFloatingText(text, x, y, type) {
-    const el = document.createElement('div');
-    el.className = 'floating-text';
-    
-    if(type === 'room') {
-        el.className += ' text-room';
-    } else if(type === 'floor') {
-        el.className += ' text-floor';
-    } else {
-        el.className += ' text-bonus';
-        el.style.left = canvas.getBoundingClientRect().left + x + 'px';
-        el.style.top = canvas.getBoundingClientRect().top + y + 'px';
-    }
-    
-    el.innerText = text;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 1200);
-}
+                if (type === 'room') {
+                    el.className += ' text-room';
+                } else if (type === 'floor') {
+                    el.className += ' text-floor';
+                } else {
+                    el.className += ' text-bonus';
+                    el.style.left = canvas.getBoundingClientRect().left + x + 'px';
+                    el.style.top = canvas.getBoundingClientRect().top + y + 'px';
+                }
 
-for(let i=0;i<6;i++) obstacles.push(new Obstacle());
-
-let lastSpawnX=0, animationId;
-
-function checkProgression() {
-    if(state.visualScore >= state.nextRoomThreshold) {
-        state.roomNumber++;
-        state.nextRoomThreshold += CONFIG.ROOM_DISTANCE;
-        state.roomsClearedInFloor++;
-        state.spawnMilestoneDoor = true; 
-        
-        state.speed += 0.15;
-        
-        roomEl.innerText = state.roomNumber;
-        
-        if(state.roomsClearedInFloor >= 5) {
-            state.floorNumber++;
-            state.roomsClearedInFloor = 0;
-            state.visualScore += 150; 
-            state.score += 150;
-            
-            state.bgHue = (state.bgHue + 50) % 360;
-            
-            floorEl.innerText = state.floorNumber;
-            showFloatingText("FLOOR " + state.floorNumber + " REACHED!", 0, 0, 'floor');
-            showFloatingText("BONUS +150", 0, 0, 'room'); 
-            
-        } else {
-             showFloatingText("LEVEL UP!", 0, 0, 'room');
-        }
-    }
-}
-
-function gameLoop(){
-    if(!state.playing) return;
-
-    state.animDistance += state.speed * 0.028; 
-
-    ctx.clearRect(0,0,cw,ch);
-    
-    drawBackground(); 
-    drawFloor();
-    updateAndDrawParticles(); 
-
-    player.update();
-    player.draw();
-
-    if(state.speed > 12) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 2;
-        for(let i=0; i<3; i++){
-            let lx = Math.random() * cw;
-            let ly = Math.random() * ch;
-            ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx - 100, ly); ctx.stroke();
-        }
-    }
-
-    const minGap = 350 + state.speed*15;
-    if(cw-lastSpawnX>minGap && Math.random()<0.04){
-        const o = obstacles.find(o=>!o.active);
-        if(o){
-            o.spawn(cw, Math.random()>0.55?'bench':'wire');
-            lastSpawnX=cw;
-        }
-    }else lastSpawnX -= state.speed;
-
-    let hit=false;
-    obstacles.forEach(o=>{
-        if(o.active){
-            o.update(); o.draw();
-            
-            if(o.type === 'wire' && player.crouching){
-                return;
+                el.innerText = text;
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 1200);
             }
 
-            if(
-                player.x+10 < o.x+o.w &&
-                player.x+player.w-10 > o.x &&
-                player.y+10 < o.y+o.h-5 &&
-                player.y+player.h-5 > o.y+5
-            ) hit=true;
-        }
-    });
+            for (let i = 0; i < 6; i++) obstacles.push(new Obstacle());
 
-    if(hit){gameOver(); return;}
+            let lastSpawnX = 0, animationId;
 
-    state.score+=0.05;
-    state.visualScore = Math.floor(state.score);
-    
-    checkProgression();
+            function checkProgression() {
+                if (state.visualScore >= state.nextRoomThreshold) {
+                    state.roomNumber++;
+                    state.nextRoomThreshold += CONFIG.ROOM_DISTANCE;
+                    state.roomsClearedInFloor++;
+                    state.spawnMilestoneDoor = true;
 
-    if(state.frame % 60 === 0) { 
-        state.speed = Math.min(CONFIG.SPEED_MAX, state.speed + 0.05);
-    }
-    state.frame++;
-    scoreEl.innerText=state.visualScore;
-    animationId=requestAnimationFrame(gameLoop);
-}
+                    state.speed += 0.15;
 
-function drawFloor(){
-    // --- DRAW CEILING RAIL FIRST (Behind everything) ---
-    const ceilingY = groundY - 250;
-    ctx.fillStyle = `hsla(${state.bgHue}, 20%, 10%, 0.8)`; 
-    ctx.fillRect(0, ceilingY - 10, cw, 10); 
-    ctx.strokeStyle = `hsla(${state.bgHue}, 70%, 70%, 0.3)`; 
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, ceilingY); ctx.lineTo(cw, ceilingY); ctx.stroke();
+                    roomEl.innerText = state.roomNumber;
 
-    // --- DRAW FLOOR ---
-    ctx.strokeStyle=`hsla(${state.bgHue}, 60%, 60%, 0.1)`;
-    ctx.lineWidth=1;
-    let offset = -(state.animDistance * 50) % 50;
-    for(let i=0; i<cw/50; i++){
-        ctx.beginPath(); ctx.moveTo(i*50 + offset, groundY); ctx.lineTo(i*50 + offset - 200, ch); ctx.stroke();
-    }
+                    if (state.roomsClearedInFloor >= 5) {
+                        state.floorNumber++;
+                        state.roomsClearedInFloor = 0;
+                        state.visualScore += 150;
+                        state.score += 150;
 
-    ctx.strokeStyle=`hsla(${state.bgHue}, 70%, 70%, 0.8)`; 
-    ctx.lineWidth=4;
-    ctx.shadowBlur=10; ctx.shadowColor=`hsla(${state.bgHue}, 70%, 70%, 1)`;
-    ctx.beginPath();
-    ctx.moveTo(0,groundY);
-    ctx.lineTo(cw,groundY);
-    ctx.stroke();
-    ctx.shadowBlur=0;
-}
+                        state.bgHue = (state.bgHue + 50) % 360;
 
-function drawStaticScene(){
-    ctx.clearRect(0,0,cw,ch);
-    drawBackground();
-    drawFloor();
-    player.y=groundY-player.h;
-    player.draw();
-}
+                        floorEl.innerText = state.floorNumber;
+                        showFloatingText("FLOOR " + state.floorNumber + " REACHED!", 0, 0, 'floor');
+                        showFloatingText("BONUS +150", 0, 0, 'room');
 
-function startGame(){
-    state.playing=true;
-    state.isGameOver=false;
-    state.score=0;
-    state.visualScore=0;
-    state.speed=CONFIG.SPEED_START;
-    state.frame=0;
-    state.animDistance = 0; 
-    lastSpawnX=0;
-    
-    state.roomNumber = 101;
-    state.floorNumber = 1;
-    state.roomsClearedInFloor = 0;
-    state.nextRoomThreshold = CONFIG.ROOM_DISTANCE;
-    state.bgHue = 220;
-    state.spawnMilestoneDoor = false; 
-    
-    roomEl.innerText = state.roomNumber;
-    floorEl.innerText = state.floorNumber;
-    scoreEl.innerText = 0;
+                    } else {
+                        showFloatingText("LEVEL UP!", 0, 0, 'room');
+                    }
+                }
+            }
 
-    particles.length = 0;
-    bgObjects.length = 0;
-    document.querySelectorAll('.floating-text').forEach(e => e.remove());
+            function gameLoop() {
+                if (!state.playing) return;
 
-    player.y=groundY-player.h;
-    player.dy=0;
-    player.grounded=true;
-    player.standUp();
+                state.animDistance += state.speed * 0.028;
 
-    obstacles.forEach(o=>o.active=false);
-    modal.style.display='none';
-    startScreen.style.display='none';
-    gameLoop();
-}
+                ctx.clearRect(0, 0, cw, ch);
 
-function gameOver(){
-    state.playing=false;
-    state.isGameOver=true;
-    cancelAnimationFrame(animationId);
+                drawBackground();
+                drawFloor();
+                updateAndDrawParticles();
 
-    if(state.visualScore > state.highScore) {
-        state.highScore = state.visualScore;
-        localStorage.setItem('cc_hallway_hiscore', state.highScore);
-        highScoreEl.innerText = state.highScore;
-    }
+                player.update();
+                player.draw();
 
-    finalScoreEl.innerText = Math.floor(state.score);
-    deathReasonEl.innerText = FAIL_MESSAGES[Math.floor(Math.random() * FAIL_MESSAGES.length)];
-    modal.style.display='block';
-}
+                if (state.speed > 12) {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < 3; i++) {
+                        let lx = Math.random() * cw;
+                        let ly = Math.random() * ch;
+                        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx - 100, ly); ctx.stroke();
+                    }
+                }
 
-function inputAction(e){
-    if(state.isGameOver) return;
-    if(!state.playing){startGame(); return;}
+                const minGap = 350 + state.speed * 15;
+                if (cw - lastSpawnX > minGap && Math.random() < 0.04) {
+                    const o = obstacles.find(o => !o.active);
+                    if (o) {
+                        o.spawn(cw, Math.random() > 0.55 ? 'bench' : 'wire');
+                        lastSpawnX = cw;
+                    }
+                } else lastSpawnX -= state.speed;
 
-    const t=e.touches ? e.touches[0] : null;
-    // --- UPDATED CONTROLS: SIDE-BY-SIDE ---
-    // Left half (x < width/2) = Fast Fall / Slide
-    // Right half (x > width/2) = Jump
-    if(t && t.clientX < innerWidth / 2) {
-        player.fastFall();
-    } else if(t) {
-        player.jump(); 
-    } else {
-        // Fallback for non-touch (though listener handles touch)
-        if(e.type === 'keydown' && e.code === 'ArrowDown') player.fastFall();
-        else player.jump();
-    }
-}
+                let hit = false;
+                obstacles.forEach(o => {
+                    if (o.active) {
+                        o.update(); o.draw();
 
-addEventListener('touchstart', (e) => {
-    if(state.isGameOver) return;
-    if(!state.playing) { startGame(); return; }
-    
-    const t = e.touches[0];
-    // --- SIDE-BY-SIDE LOGIC ---
-    if(t.clientX < innerWidth / 2) {
-        player.fastFall();
-    } else {
-        player.jump();
-    }
-}, {passive:false});
+                        if (o.type === 'wire' && player.crouching) {
+                            return;
+                        }
 
-addEventListener('touchend', (e) => {
-    player.standUp();
-    player.cutJump(); 
-});
+                        if (
+                            player.x + 10 < o.x + o.w &&
+                            player.x + player.w - 10 > o.x &&
+                            player.y + 10 < o.y + o.h - 5 &&
+                            player.y + player.h - 5 > o.y + 5
+                        ) hit = true;
+                    }
+                });
 
-addEventListener('keydown',e=>{
-    if(e.code==='Space'||e.code==='ArrowUp'){
-        e.preventDefault();
-        player.jump();
-    }
-    if(e.code==='ArrowDown'){
-        e.preventDefault();
-        player.fastFall();
-    }
-});
-addEventListener('keyup',e=>{
-    if(e.code==='ArrowDown') player.standUp();
-    if(e.code==='Space'||e.code==='ArrowUp') player.cutJump(); 
-});
+                if (hit) { gameOver(); return; }
 
-retryBtn.addEventListener('click',e=>{
-    e.stopPropagation();
-    startGame();
-});
+                state.score += 0.05;
+                state.visualScore = Math.floor(state.score);
 
-resize();
+                checkProgression();
 
-})();
-</script>
+                if (state.frame % 60 === 0) {
+                    state.speed = Math.min(CONFIG.SPEED_MAX, state.speed + 0.05);
+                }
+                state.frame++;
+                scoreEl.innerText = state.visualScore;
+                animationId = requestAnimationFrame(gameLoop);
+            }
+
+            function drawFloor() {
+                // --- DRAW CEILING RAIL FIRST (Behind everything) ---
+                const ceilingY = groundY - 250;
+                ctx.fillStyle = `hsla(${state.bgHue}, 20%, 10%, 0.8)`;
+                ctx.fillRect(0, ceilingY - 10, cw, 10);
+                ctx.strokeStyle = `hsla(${state.bgHue}, 70%, 70%, 0.3)`;
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(0, ceilingY); ctx.lineTo(cw, ceilingY); ctx.stroke();
+
+                // --- DRAW FLOOR ---
+                ctx.strokeStyle = `hsla(${state.bgHue}, 60%, 60%, 0.1)`;
+                ctx.lineWidth = 1;
+                let offset = -(state.animDistance * 50) % 50;
+                for (let i = 0; i < cw / 50; i++) {
+                    ctx.beginPath(); ctx.moveTo(i * 50 + offset, groundY); ctx.lineTo(i * 50 + offset - 200, ch); ctx.stroke();
+                }
+
+                ctx.strokeStyle = `hsla(${state.bgHue}, 70%, 70%, 0.8)`;
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 10; ctx.shadowColor = `hsla(${state.bgHue}, 70%, 70%, 1)`;
+                ctx.beginPath();
+                ctx.moveTo(0, groundY);
+                ctx.lineTo(cw, groundY);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            function drawStaticScene() {
+                ctx.clearRect(0, 0, cw, ch);
+                drawBackground();
+                drawFloor();
+                player.y = groundY - player.h;
+                player.draw();
+            }
+
+            function startGame() {
+                state.playing = true;
+                state.isGameOver = false;
+                state.score = 0;
+                state.visualScore = 0;
+                state.speed = CONFIG.SPEED_START;
+                state.frame = 0;
+                state.animDistance = 0;
+                lastSpawnX = 0;
+
+                state.roomNumber = 101;
+                state.floorNumber = 1;
+                state.roomsClearedInFloor = 0;
+                state.nextRoomThreshold = CONFIG.ROOM_DISTANCE;
+                state.bgHue = 220;
+                state.spawnMilestoneDoor = false;
+
+                roomEl.innerText = state.roomNumber;
+                floorEl.innerText = state.floorNumber;
+                scoreEl.innerText = 0;
+
+                particles.length = 0;
+                bgObjects.length = 0;
+                document.querySelectorAll('.floating-text').forEach(e => e.remove());
+
+                player.y = groundY - player.h;
+                player.dy = 0;
+                player.grounded = true;
+                player.standUp();
+
+                obstacles.forEach(o => o.active = false);
+                modal.style.display = 'none';
+                startScreen.style.display = 'none';
+                gameLoop();
+            }
+
+            function gameOver() {
+                state.playing = false;
+                state.isGameOver = true;
+                cancelAnimationFrame(animationId);
+
+                if (state.visualScore > state.highScore) {
+                    state.highScore = state.visualScore;
+                    localStorage.setItem('cc_hallway_hiscore', state.highScore);
+                    highScoreEl.innerText = state.highScore;
+                }
+
+                finalScoreEl.innerText = Math.floor(state.score);
+                deathReasonEl.innerText = FAIL_MESSAGES[Math.floor(Math.random() * FAIL_MESSAGES.length)];
+                modal.style.display = 'block';
+            }
+
+            function inputAction(e) {
+                if (state.isGameOver) return;
+                if (!state.playing) { startGame(); return; }
+
+                const t = e.touches ? e.touches[0] : null;
+                // --- UPDATED CONTROLS: SIDE-BY-SIDE ---
+                // Left half (x < width/2) = Fast Fall / Slide
+                // Right half (x > width/2) = Jump
+                if (t && t.clientX < innerWidth / 2) {
+                    player.fastFall();
+                } else if (t) {
+                    player.jump();
+                } else {
+                    // Fallback for non-touch (though listener handles touch)
+                    if (e.type === 'keydown' && e.code === 'ArrowDown') player.fastFall();
+                    else player.jump();
+                }
+            }
+
+            addEventListener('touchstart', (e) => {
+                if (state.isGameOver) return;
+                if (!state.playing) { startGame(); return; }
+
+                const t = e.touches[0];
+                // --- SIDE-BY-SIDE LOGIC ---
+                if (t.clientX < innerWidth / 2) {
+                    player.fastFall();
+                } else {
+                    player.jump();
+                }
+            }, { passive: false });
+
+            addEventListener('touchend', (e) => {
+                player.standUp();
+                player.cutJump();
+            });
+
+            addEventListener('keydown', e => {
+                if (e.code === 'Space' || e.code === 'ArrowUp') {
+                    e.preventDefault();
+                    player.jump();
+                }
+                if (e.code === 'ArrowDown') {
+                    e.preventDefault();
+                    player.fastFall();
+                }
+            });
+            addEventListener('keyup', e => {
+                if (e.code === 'ArrowDown') player.standUp();
+                if (e.code === 'Space' || e.code === 'ArrowUp') player.cutJump();
+            });
+
+            retryBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                startGame();
+            });
+
+            resize();
+
+        })();
+    </script>
 </body>
+
 </html>
