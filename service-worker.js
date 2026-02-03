@@ -1,21 +1,17 @@
-const CACHE_NAME = 'campuscare-offline-v3';
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.php',
-  '/assets/css/style.css',
-  '/offline.html',
-  '/img/logo.png',
-  '/img/icon.png'
-];
+const CACHE_NAME = 'campuscare-offline-v4'; // Version 4 (To force update)
+// Use relative path './' to ensure it works even inside subfolders like localhost/myproject/
+const OFFLINE_URL = './offline.html';
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force this new service worker to become the active one
+  self.skipWaiting(); // Force activation immediately
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('Opened cache');
-      return cache.addAll(ASSETS_TO_CACHE);
+      console.log('Service Worker: Caching Offline Page');
+      // We ONLY cache the offline.html strictly.
+      // Even if style.css or logo.png is missing, this MUST succeed.
+      return cache.add(OFFLINE_URL);
     }).catch(err => {
-      console.error('Failed to cache assets:', err);
+      console.error('CRITICAL: Failed to cache offline page. Check file path!', err);
     })
   );
 });
@@ -28,7 +24,7 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log('Deleting old cache:', cacheName);
+              console.log('Service Worker: Clearing Old Cache');
               return caches.delete(cacheName);
             }
           })
@@ -39,21 +35,15 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Handle navigation requests (HTML pages)
+  // Only handle HTML navigation requests (pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        // If network fails, return the offline page
-        return caches.match('/offline.html');
-      })
+      fetch(event.request)
+        .catch(() => {
+          // IF NETWORK FAILS -> SHOW OFFLINE PAGE
+          return caches.match(OFFLINE_URL);
+        })
     );
-    return;
   }
-
-  // Handle other requests (Cache First, fallback to Network)
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+  // For images/css/js, we just try network. No caching needed for now.
 });
