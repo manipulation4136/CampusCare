@@ -237,6 +237,12 @@
             font-size: 1.5rem;
         }
 
+        .text-penalty {
+            color: #e74c3c;
+            font-size: 2rem;
+            text-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+        }
+
         .text-room {
             color: #2ecc71;
             font-size: 2rem;
@@ -292,19 +298,18 @@
         </div>
         <div class="stat-box"><span class="stat-label">ROOM</span><span class="stat-val" id="roomDisplay">101</span>
         </div>
-        <div class="stat-box"><span class="stat-label">SCORE</span><span class="stat-val" id="scoreDisplay">0</span>
-        </div>
     </div>
 
     <div class="ui-layer-right">
-        <div class="stat-box"><span class="stat-label">BEST</span><span class="stat-val" id="highScoreDisplay">0</span>
+        <div class="stat-box"><span class="stat-label">TIME</span><span class="stat-val" id="timeDisplay">08:55</span>
         </div>
     </div>
 
     <div id="startScreen">
-        <h1>HALLWAY DASH</h1>
-        <p style="color:#6ea8fe; font-weight:bold;">TAP TO START</p>
-        <p style="opacity:0.5; font-size:0.8em; margin-top:20px">LEFT: SLIDE | RIGHT: JUMP</p>
+        <h1 style="color:#e74c3c;">LATE FOR EXAM!</h1>
+        <p style="color:#f1c40f; font-weight:bold; font-size: 1.2rem;">RUN TO THE TOP FLOOR!</p>
+        <p style="color:#6ea8fe; font-weight:bold; margin-top:15px;">TAP TO START</p>
+        <p style="opacity:0.5; font-size:0.8em; margin-top:10px">LEFT: SLIDE | RIGHT: JUMP</p>
     </div>
 
     <div id="gameOverModal">
@@ -320,16 +325,16 @@
         <i class="fas fa-sync-alt"></i> Retry Connection
     </button>
 
+    <audio id="bgMusic" loop src="bg-music.mp3" style="display:none;"></audio>
     <script>
         window.addEventListener('online', () => { location.reload(); });
 
         (function () {
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
-            const scoreEl = document.getElementById('scoreDisplay');
             const roomEl = document.getElementById('roomDisplay');
             const floorEl = document.getElementById('floorDisplay');
-            const highScoreEl = document.getElementById('highScoreDisplay');
+            const timeEl = document.getElementById('timeDisplay');
             const modal = document.getElementById('gameOverModal');
             const startScreen = document.getElementById('startScreen');
             const retryBtn = document.getElementById('retryBtn');
@@ -339,17 +344,101 @@
             const charNameText = document.getElementById('charNameText');
 
             const CONFIG = {
-                GRAVITY: 1.1,
-                JUMP_FORCE: -20,
+                GRAVITY: 0.8,
+                JUMP_FORCE: -19,
                 SPEED_START: 4,
-                SPEED_MAX: 12,
+                SPEED_MAX: 17,
                 ROOM_DISTANCE: 300
             };
-            const FAIL_MESSAGES = ["Tripped on a wire!", "Principal saw you running!", "Late for the Exam!", "ID Card Missing!", "Caught by the Squad!"];
+            const FAIL_MESSAGES = [
+                "Forgot Hall Ticket!",
+                "Exam Started 10 Mins Ago!",
+                "Principal Caught You!",
+                "Stopped to Chat!",
+                "Bus Left Without You!",
+                "Pen Leaked in Pocket!"
+            ];
+
+            const AudioSys = {
+                ctx: null,
+                init() {
+                    if (!this.ctx) {
+                        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    const resume = () => {
+                        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+                        window.removeEventListener('click', resume);
+                        window.removeEventListener('keydown', resume);
+                        window.removeEventListener('touchstart', resume);
+                    };
+                    window.addEventListener('click', resume);
+                    window.addEventListener('keydown', resume);
+                    window.addEventListener('touchstart', resume);
+                },
+                playJump() {
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(500, this.ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.1);
+                },
+                playSlide() {
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.2);
+                },
+                playGameOver() {
+                    if (!this.ctx) return;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.8);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.8);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.8);
+                }
+            };
+            AudioSys.init();
+
+            function toggleMusic(play) {
+                const audio = document.getElementById('bgMusic');
+                if (play) {
+                    audio.play().catch(e => console.log("Audio play failed (interaction needed):", e));
+                } else {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+            }
 
             // Added characterIndex to state
-            let state = { playing: false, score: 0, visualScore: 0, highScore: parseInt(localStorage.getItem('cc_hallway_hiscore')) || 0, speed: CONFIG.SPEED_START, frame: 0, animDistance: 0, isGameOver: false, roomNumber: 101, floorNumber: 1, nextRoomThreshold: CONFIG.ROOM_DISTANCE, roomsClearedInFloor: 0, bgHue: 220, spawnMilestoneDoor: false, characterIndex: 0 };
-            highScoreEl.innerText = state.highScore;
+            // Added characterIndex to state
+            // Added characterIndex to state
+            // Added characterIndex to state
+            // Added characterIndex to state
+            // Added characterIndex to state
+            // Added characterIndex to state
+            let state = { playing: false, score: 0, visualScore: 0, highScore: parseInt(localStorage.getItem('cc_hallway_hiscore')) || 0, speed: CONFIG.SPEED_START, frame: 0, animDistance: 0, isGameOver: false, roomNumber: 101, floorNumber: 1, nextRoomThreshold: CONFIG.ROOM_DISTANCE, roomsClearedInFloor: 0, bgHue: 220, spawnMilestoneDoor: false, characterIndex: 0, shakeTime: 0, bgPatternQueue: [], cinematic: { active: false, timer: 0, text: "", subText: "" }, transitionOpacity: 0, gameTime: 535, maxTime: 570, invincibleTimer: 0 };
+            // highScoreEl.innerText = state.highScore;
 
             let cw, ch, groundY;
 
@@ -380,52 +469,253 @@
             }
 
             const bgObjects = [];
+            // --- ARCHITECTURAL PATTERN SYSTEM ---
+            const HALLWAY_PATTERNS = [
+                ['pillar', 'door', 'window', 'window'],       // Classic Classroom
+                ['pillar', 'locker', 'locker', 'locker'],     // Locker Area
+                ['pillar', 'notice_board', 'door', 'pillar'], // Staff Room / Office
+                ['pillar', 'window', 'bench_bg', 'window'],   // Resting Area (bench_bg is visual only)
+                ['pillar', 'door', 'fire_ext', 'window']      // Utility Area
+            ];
+
             function spawnBgObject() {
-                let type = state.spawnMilestoneDoor ? 'milestone_door' : (Math.random() > 0.7 ? 'pillar' : 'door');
-                if (type === 'milestone_door') state.spawnMilestoneDoor = false;
-                bgObjects.push({ x: cw + 50, type: type, label: "ROOM " + state.roomNumber });
+                // 1. മൈൽസ്റ്റോൺ ഡോർ (റൂം നമ്പർ മാറുന്നത്) വരാനുണ്ടെങ്കിൽ അത് ആദ്യം ഇടുക
+                if (state.spawnMilestoneDoor) {
+                    bgObjects.push({ x: cw + 100, type: 'milestone_door', label: "ROOM " + state.roomNumber });
+                    state.spawnMilestoneDoor = false;
+                    // പാറ്റേൺ ക്യൂ ക്ലിയർ ചെയ്യുക, പുതിയ റൂം തുടങ്ങുമ്പോൾ ഫ്രഷ് ആയി തുടങ്ങാൻ
+                    state.bgPatternQueue = [];
+                    return;
+                }
+
+                // 2. ക്യൂ കാലിയാണെങ്കിൽ പുതിയൊരു പാറ്റേൺ ലോഡ് ചെയ്യുക
+                if (state.bgPatternQueue.length === 0) {
+                    const randomPattern = HALLWAY_PATTERNS[Math.floor(Math.random() * HALLWAY_PATTERNS.length)];
+                    state.bgPatternQueue = [...randomPattern]; // പാറ്റേൺ ക്യൂവിലേക്ക് മാറ്റുന്നു
+                }
+
+                // 3. ക്യൂവിന്റെ മുന്നിൽ നിന്ന് അടുത്ത ഒബ്ജക്റ്റ് എടുക്കുക
+                const nextType = state.bgPatternQueue.shift();
+
+                // 4. ഒബ്ജക്റ്റ് സ്പോൺ ചെയ്യുക (Some variations for realism)
+                let objWidth = 50; // Default (Pillar)
+                if (nextType === 'locker') objWidth = 60;
+                if (nextType === 'window') objWidth = 120;
+                if (nextType === 'door') objWidth = 90;
+                if (nextType === 'notice_board') objWidth = 100;
+                if (nextType === 'fire_ext') objWidth = 40;
+                if (nextType === 'bench_bg') objWidth = 80;
+                if (nextType === 'milestone_door') objWidth = 150;
+
+                // 'empty' ടൈപ്പ് വന്നാൽ ഒന്നും വരക്കണ്ട, വെറും സ്പേസ് മാത്രം
+                if (nextType !== 'empty') {
+                    bgObjects.push({
+                        x: cw + 50,
+                        type: nextType,
+                        width: objWidth
+                    });
+                }
             }
 
+            // --- പുതിയ ബാക്ക്ഗ്രൗണ്ട് ഡ്രോയിംഗ് (REALISTIC FEEL) ---
             function drawBackground() {
-                if (state.playing && state.frame % 40 === 0) spawnBgObject();
-                let hue = state.bgHue;
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(0, 0, cw, ch);
-                const corridorHeight = 400;
-                const corridorTop = groundY - 250;
-                ctx.fillStyle = `hsl(${hue}, 30%, 15%)`;
-                ctx.fillRect(0, corridorTop - 50, cw, corridorHeight);
-                ctx.fillStyle = `hsl(${hue}, 20%, 10%)`;
-                ctx.textAlign = 'center';
+                // Position-based spawning logic
+                const lastObj = bgObjects.length > 0 ? bgObjects[bgObjects.length - 1] : null;
+                if (state.playing) {
+                    // 50px gap between objects
+                    if (!lastObj || (lastObj.x + lastObj.width < cw - 20)) {
+                        spawnBgObject();
+                    }
+                }
 
+                let hue = state.bgHue;
+
+                // 1. പ്രധാന ഭിത്തി (Wall)
+                ctx.fillStyle = `hsl(${hue}, 25%, 18%)`; // ഇരുണ്ട നിറം
+                ctx.fillRect(0, 0, cw, ch);
+
+                const corridorTop = groundY - 260;
+                const corridorHeight = 260;
+
+                // 2. ഭിത്തിയുടെ താഴത്തെ ഭാഗം (Dado / Wainscoting) - കോളേജ് ലുക്ക് കിട്ടാൻ
+                ctx.fillStyle = `hsl(${hue}, 20%, 25%)`;
+                ctx.fillRect(0, groundY - 100, cw, 100);
+
+                // ബോർഡർ ലൈൻ (Waist line)
+                ctx.fillStyle = `hsl(${hue}, 30%, 35%)`;
+                ctx.fillRect(0, groundY - 100, cw, 5);
+
+                // 3. തറയും സീലിംഗും തമ്മിലുള്ള ലൈനുകൾ (Depth)
+                ctx.fillStyle = `hsl(${hue}, 15%, 10%)`; // സീലിംഗ്
+                ctx.fillRect(0, 0, cw, corridorTop);
+
+                ctx.beginPath();
+                ctx.strokeStyle = `hsl(${hue}, 10%, 30%)`;
+                ctx.lineWidth = 2;
+                ctx.moveTo(0, corridorTop);
+                ctx.lineTo(cw, corridorTop); // സീലിംഗ് ലൈൻ
+                ctx.stroke();
+
+                // 4. ഒബ്ജക്റ്റുകൾ വരയ്ക്കുന്നു
                 for (let i = bgObjects.length - 1; i >= 0; i--) {
                     let o = bgObjects[i];
-                    if (state.playing) o.x -= state.speed * 0.5;
+                    if (state.playing) o.x -= state.speed * 0.5; // Parallax effect (പതുക്കെ നീങ്ങുന്നു)
+
+                    const floorLine = groundY;
 
                     if (o.type === 'pillar') {
-                        ctx.fillRect(o.x, groundY - 200, 40, 200);
+                        // കോൺക്രീറ്റ് പില്ലർ
+                        ctx.fillStyle = `hsl(${hue}, 15%, 22%)`;
+                        ctx.fillRect(o.x, corridorTop, 50, corridorHeight);
+
+                        // പില്ലറിന് ഷേഡിംഗ് (3D Feel)
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.fillRect(o.x + 40, corridorTop, 10, corridorHeight); // നിഴൽ
+                        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                        ctx.fillRect(o.x, corridorTop, 10, corridorHeight); // വെളിച്ചം
+
                     } else if (o.type === 'door') {
-                        ctx.fillRect(o.x, groundY - 160, 2, 160);
-                        ctx.fillRect(o.x + 80, groundY - 160, 2, 160);
-                        ctx.fillRect(o.x, groundY - 160, 82, 2);
-                        ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                        ctx.fillRect(o.x + 2, groundY - 160 + 2, 78, 158);
-                        ctx.fillStyle = `hsl(${hue}, 20%, 10%)`;
+                        // ക്ലാസ് റൂം ഡോർ
+                        const doorH = 180;
+                        const doorY = floorLine - doorH;
+
+                        // ഡോർ ഫ്രെയിം
+                        ctx.fillStyle = `hsl(${hue}, 15%, 15%)`;
+                        ctx.fillRect(o.x, doorY, 90, doorH);
+
+                        // ഡോർ പാളി
+                        ctx.fillStyle = `hsl(${hue}, 20%, 30%)`; // തടിയുടെ കളർ ഫീൽ ചെയ്യാൻ
+                        ctx.fillRect(o.x + 5, doorY + 5, 80, doorH - 5);
+
+                        // ഡോർ വിൻഡോ (ഗ്ലാസ്)
+                        ctx.fillStyle = `hsl(${hue}, 40%, 10%)`;
+                        ctx.fillRect(o.x + 15, doorY + 20, 60, 50);
+
+                        // ഡോർ നോബ് (Handle)
+                        ctx.fillStyle = '#bbb';
+                        ctx.beginPath(); ctx.arc(o.x + 75, doorY + 100, 3, 0, Math.PI * 2); ctx.fill();
+
+                    } else if (o.type === 'window') {
+                        // ജനൽ
+                        const winY = corridorTop + 40;
+                        const winH = 100;
+                        const winW = 120;
+
+                        // ഗ്ലാസ്
+                        ctx.fillStyle = `hsl(${hue}, 40%, 15%)`; // രാത്രി ആകാശം
+                        ctx.fillRect(o.x, winY, winW, winH);
+
+                        // ജനൽ കമ്പികൾ
+                        ctx.fillStyle = `hsl(${hue}, 10%, 20%)`; // ഫ്രെയിം
+                        ctx.fillRect(o.x + winW / 2 - 2, winY, 4, winH); // നടുക്കുള്ള വടി
+                        ctx.fillRect(o.x, winY + winH / 2 - 2, winW, 4); // കുറുകെയുള്ള വടി
+
+                        // ഗ്ലാസ് റിഫ്ലക്ഷൻ (തിളക്കം)
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                        ctx.beginPath();
+                        ctx.moveTo(o.x + 10, winY + winH);
+                        ctx.lineTo(o.x + 40, winY);
+                        ctx.lineTo(o.x + 60, winY);
+                        ctx.lineTo(o.x + 30, winY + winH);
+                        ctx.fill();
+
+                    } else if (o.type === 'locker') {
+                        // ലോക്കറുകൾ
+                        const lockerH = 160;
+                        const lockerY = floorLine - lockerH;
+                        const lockerW = 60;
+
+                        ctx.fillStyle = `hsl(${hue}, 10%, 35%)`; // മെറ്റൽ ഗ്രേ
+                        ctx.fillRect(o.x, lockerY, lockerW, lockerH);
+
+                        // ലോക്കർ ഡിവിഷൻ (രണ്ട് തട്ട്)
+                        ctx.strokeStyle = `hsl(${hue}, 10%, 20%)`;
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(o.x + 2, lockerY + 2, lockerW - 4, lockerH / 2 - 4); // മുകളിലെ തട്ട്
+                        ctx.strokeRect(o.x + 2, lockerY + lockerH / 2 + 2, lockerW - 4, lockerH / 2 - 4); // താഴെ
+
+                        // വെന്റിലേഷൻ വിടവുകൾ (Vents)
+                        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                        for (let j = 0; j < 3; j++) {
+                            ctx.fillRect(o.x + 10, lockerY + 20 + (j * 5), 40, 2);
+                            ctx.fillRect(o.x + 10, lockerY + lockerH / 2 + 20 + (j * 5), 40, 2);
+                        }
+
+                    } else if (o.type === 'notice_board') {
+                        // നോട്ടീസ് ബോർഡ്
+                        const nbY = corridorTop + 50;
+                        const nbH = 80;
+                        const nbW = 100;
+
+                        // ബോർഡ് ഫ്രെയിം
+                        ctx.fillStyle = '#5d4037'; // തവിട്ട് നിറം
+                        ctx.fillRect(o.x, nbY, nbW, nbH);
+                        // ഉള്ളിലെ ഭാഗം
+                        ctx.fillStyle = '#3e2723';
+                        ctx.fillRect(o.x + 4, nbY + 4, nbW - 8, nbH - 8);
+
+                        // പേപ്പറുകൾ (റാൻഡം ആയി ഒട്ടിച്ചിരിക്കുന്നു)
+                        if (!o.papers) { // പേപ്പറുകൾ ഇല്ലെങ്കിൽ ഉണ്ടാക്കുക (One time)
+                            o.papers = [];
+                            for (let k = 0; k < 4; k++) {
+                                o.papers.push({
+                                    px: Math.random() * (nbW - 20),
+                                    py: Math.random() * (nbH - 20),
+                                    pw: 15 + Math.random() * 10,
+                                    ph: 20 + Math.random() * 10
+                                });
+                            }
+                        }
+
+                        // പേപ്പറുകൾ വരയ്ക്കുക
+                        ctx.fillStyle = '#ecf0f1';
+                        o.papers.forEach(p => {
+                            ctx.fillRect(o.x + 6 + p.px, nbY + 6 + p.py, p.pw, p.ph);
+                        });
+
+                    } else if (o.type === 'fire_ext') {
+                        // തീയണയ്ക്കുന്ന സിലിണ്ടർ
+                        const feY = groundY - 140;
+                        ctx.fillStyle = '#c0392b'; // Red
+                        ctx.beginPath();
+                        ctx.roundRect(o.x + 10, feY, 20, 50, 5); // Modern browsers supports roundRect
+                        ctx.fill();
+                        ctx.fillStyle = '#ecf0f1'; // Label
+                        ctx.fillRect(o.x + 12, feY + 10, 16, 8);
+                        ctx.fillStyle = '#2c3e50'; // Nozzle
+                        ctx.fillRect(o.x + 18, feY - 5, 4, 5);
+
+                    } else if (o.type === 'bench_bg') {
+                        // ബാക്ക്ഗ്രൗണ്ടിൽ ഒരു ബെഞ്ച് (ഇടിക്കാൻ പറ്റാത്തത്)
+                        const bY = groundY - 60;
+                        ctx.fillStyle = '#5d4037'; // Wood
+                        ctx.fillRect(o.x, bY, 80, 10); // Seat
+                        ctx.fillStyle = '#2c3e50'; // Legs
+                        ctx.fillRect(o.x + 10, bY + 10, 5, 50);
+                        ctx.fillRect(o.x + 65, bY + 10, 5, 50);
+
                     } else if (o.type === 'milestone_door') {
+                        // സ്പെഷ്യൽ ഡോർ (ലോജിക് മാറ്റമില്ല, ലുക്ക് മാത്രം)
                         ctx.shadowBlur = 20; ctx.shadowColor = `hsl(${hue}, 80%, 60%)`;
                         ctx.fillStyle = `hsl(${hue}, 40%, 20%)`;
-                        ctx.fillRect(o.x, groundY - 180, 5, 180);
-                        ctx.fillRect(o.x + 90, groundY - 180, 5, 180);
-                        ctx.fillRect(o.x, groundY - 180, 95, 5);
+                        // വലിപ്പം കൂട്ടി, ഡബിൾ ഡോർ ആക്കി
+                        ctx.fillRect(o.x, groundY - 220, 10, 220); // ഇടത് തൂൺ
+                        ctx.fillRect(o.x + 120, groundY - 220, 10, 220); // വലത് തൂൺ
+                        ctx.fillRect(o.x, groundY - 220, 130, 10); // മുകളിൽ
+
+                        // വാതിൽ
+                        ctx.fillStyle = 'rgba(241, 196, 15, 0.15)'; // ഗോൾഡൻ ഗ്ലോ
+                        ctx.fillRect(o.x + 10, groundY - 210, 110, 210);
+
                         ctx.shadowBlur = 0;
-                        ctx.font = '900 24px Arial';
+                        ctx.font = '900 28px Arial';
                         ctx.fillStyle = '#f1c40f';
-                        ctx.fillText(o.label, o.x + 47, groundY - 200);
-                        ctx.fillStyle = 'rgba(241, 196, 15, 0.1)';
-                        ctx.fillRect(o.x + 5, groundY - 175, 85, 175);
-                        ctx.fillStyle = `hsl(${hue}, 20%, 10%)`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(o.label, o.x + 65, groundY - 230); // റൂം നമ്പർ
+                        ctx.textAlign = 'left'; // Reset alignment
                     }
-                    if (o.x < -100) bgObjects.splice(i, 1);
+
+                    if (o.x < -150) bgObjects.splice(i, 1);
                 }
             }
 
@@ -485,14 +775,29 @@
             const player = {
                 x: 60, y: 0, w: 30, h: 50, dy: 0, grounded: false, crouching: false, slideTimer: 0,
                 draw() {
+                    // Blink effect when invulnerable
+                    if (state.invincibleTimer > 0 && state.frame % 10 < 5) return;
                     ctx.save(); ctx.translate(this.x, this.y);
 
                     // --- DYNAMIC OUTFIT SELECTION ---
-                    // Selects character based on the current index in state
-                    // Use modulo (%) to loop back to 0 if we run out of characters
                     const charObj = characterRoster[state.characterIndex % characterRoster.length];
                     const colors = charObj.colors;
-                    // -------------------------------
+
+                    // --- DROP SHADOW ---
+                    // Shadow scales down when jumping
+                    const distFromGround = (groundY - (this.y + this.h));
+                    const shadowScale = Math.max(0.2, 1 - (distFromGround / 150));
+                    const shadowAlpha = Math.max(0.1, 0.4 * shadowScale);
+
+                    ctx.save();
+                    ctx.translate(15, this.h + distFromGround); // Position at ground level
+                    ctx.scale(1, 0.3); // Flatten circle to ellipse
+                    ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 15 * shadowScale, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    // -------------------
 
                     const t = -state.animDistance;
                     let bodyRot = 0.45, bodyY = 0, neckRot = 0; const torsoLength = 28;
@@ -507,11 +812,36 @@
                         foreArmL = 1.5; foreArmR = 1.5;
                         if (this.slideTimer > 6) { const vibe = Math.sin(Date.now() / 20) * 0.5; bodyY += vibe; thighR += vibe * 0.05; }
                     } else if (!this.grounded) {
-                        neckRot = 0;
-                        if (this.dy < -12) { bodyRot = 0.45; bodyY = -2; thighL = -1.1; calfL = 0.1; ankleL = 0.8; thighR = 1.9; calfR = 2.1; ankleR = 0.3; armL = -1.9; foreArmL = 0.8; armR = 1.3; foreArmR = 1.8; }
-                        else if (this.dy < -10) { bodyRot = 0.4; bodyY = -5; thighL = -0.5; calfL = 0.4; ankleL = 0.6; thighR = 2.0; calfR = 2.2; ankleR = 0.2; armL = -1.7; foreArmL = 1.0; armR = 1.2; foreArmR = 1.7; }
-                        else if (this.dy < 4) { bodyRot = 0.12; bodyY = -14; thighL = 2.2; calfL = 2.4; ankleL = 0.2; thighR = 2.2; calfR = 2.4; ankleR = 0.2; armL = -0.8; foreArmL = 1.7; armR = 0.3; foreArmR = 1.7; }
-                        else { bodyRot = 0.2; bodyY = -6; thighL = 0.7; calfL = 0.4; ankleL = 0.5; thighR = 0.7; calfR = 0.4; ankleR = 0.5; armL = -1.4; foreArmL = 0.8; armR = 1.0; foreArmR = 0.8; }
+                        // vFactor: -1 (Jumping UP) to +1 (Falling DOWN)
+                        const vFactor = Math.max(-1, Math.min(1, this.dy / 10));
+
+                        // 1. BODY ROTATION (ഏറ്റവും പ്രധാനം)
+                        // ചാടുമ്പോൾ ശരീരം മുന്നോട്ട് ആഞ്ഞിരിക്കണം (Aerodynamic).
+                        // Jump (-1): 0.55 (Forward Lean) | Fall (1): 0.35 (Straighten for landing)
+                        bodyRot = 0.45 - (vFactor * 0.1);
+
+                        // Body Lift
+                        bodyY = -6 + (Math.abs(vFactor) * 2);
+
+                        // 2. LEGS (Sprinter Style)
+                        // Right Leg (Lead Leg - മുന്നിലെ കാൽ): 
+                        // മുകളിലേക്ക് പോകുമ്പോൾ നെഞ്ച് വരെ ഉയർത്തുന്നു (High Knee), താഴേക്ക് വരുമ്പോൾ തറയിൽ തൊടാൻ നീട്ടുന്നു.
+                        thighR = -1.2 + (vFactor * 0.8); // High up (-2.0) -> Down (-0.4)
+                        calfR = 1.8 + (vFactor * 0.2);   // കാൽമുട്ട് മടക്കി വെക്കുന്നു
+                        ankleR = 0.5;
+
+                        // Left Leg (Trail Leg - പുറകിലെ കാൽ):
+                        // ചാടുമ്പോൾ പുറകോട്ട് നീട്ടിയിരിക്കും (Kick off), ലാൻഡ് ചെയ്യുമ്പോൾ ബാലൻസിനായി മടക്കും.
+                        thighL = 0.8 + (vFactor * 0.5);  // Back (0.3) -> Further Back/Down (1.3)
+                        calfL = 0.5 + (vFactor * 1.0);   // Straight -> Bent
+                        ankleL = 0.5;
+
+                        // 3. ARMS (Power Pump)
+                        // കാലുകൾക്ക് വിപരീതമായി കൈകൾ വീശുന്നു
+                        armR = 1.5 - (vFactor * 0.5);   // Right Arm Back
+                        foreArmR = 1.5;
+                        armL = -1.5 + (vFactor * 0.5);  // Left Arm Forward (Punching air)
+                        foreArmL = 1.5;
                     } else if (state.playing) {
                         neckRot = 0; bodyY = Math.cos(t * 2) * 2 - Math.abs(Math.sin(t * 2)) * 1.5; bodyRot = 0.45 + Math.sin(t) * 0.08;
                         const strideAmp = 1.3; thighL = Math.sin(t) * strideAmp + Math.sin(t * 2) * 0.15; thighR = Math.sin(t + Math.PI) * strideAmp + Math.sin(t * 2 + Math.PI) * 0.15;
@@ -526,51 +856,117 @@
                         neckRot = 0; bodyRot = 0.1; bodyY = Math.sin(Date.now() / 300) * 1.5; thighL = 0.1; calfL = 0.1; thighR = -0.1; calfR = 0.1; armL = 0.2; foreArmL = 0.5; armR = -0.2; foreArmR = 0.5;
                     }
 
-                    const drawLimb = (ox, oy, l1, l2, a1, bend, ankleRot, color, isLeg) => {
-                        ctx.strokeStyle = color; ctx.lineWidth = isLeg ? 6 : 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-                        ctx.beginPath(); ctx.moveTo(ox, oy);
+                    // Helper for Gradients
+                    const getGrad = (x1, y1, x2, y2, c1, c2) => {
+                        const g = ctx.createLinearGradient(x1, y1, x2, y2);
+                        g.addColorStop(0, c1); g.addColorStop(1, c2); return g;
+                    };
+
+                    const drawLimb = (ox, oy, l1, l2, a1, bend, ankleRot, color, isLeg, darkColor) => {
+                        // High Quality Limb with Joint Caps
+                        ctx.lineWidth = isLeg ? 6 : 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+                        // Upper Limb
                         const kx = ox + Math.sin(a1) * l1; const ky = oy + Math.cos(a1) * l1;
-                        ctx.lineTo(kx, ky);
+
+                        // Gradient for 3D look
+                        ctx.strokeStyle = color;
+                        if (isLeg) ctx.strokeStyle = getGrad(ox, oy, kx, ky, color, darkColor || color);
+
+                        ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(kx, ky); ctx.stroke();
+
+                        // Joint Cap (Knee/Elbow)
+                        ctx.fillStyle = darkColor || color;
+                        ctx.beginPath(); ctx.arc(kx, ky, isLeg ? 3 : 2.5, 0, Math.PI * 2); ctx.fill();
+
                         const jointAngle = isLeg ? (a1 - bend) : (a1 + bend);
                         const fx = kx + Math.sin(jointAngle) * l2; const fy = ky + Math.cos(jointAngle) * l2;
-                        ctx.lineTo(fx, fy); ctx.stroke();
+
+                        // Lower Limb
+                        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(fx, fy); ctx.stroke();
+
                         if (isLeg) {
+                            // Shoe
                             ctx.save(); ctx.translate(fx, fy); ctx.rotate(jointAngle + ankleRot + 0.3);
-                            ctx.fillStyle = colors.shoe; ctx.beginPath(); ctx.ellipse(2, 3, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
-                            ctx.fillStyle = colors.shoeSole; ctx.fillRect(-2, 5, 10, 2);
-                            ctx.beginPath(); ctx.arc(7, 4, 3, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-                        } else { ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill(); }
+                            // Detail Shoe
+                            ctx.fillStyle = colors.shoe;
+                            ctx.beginPath(); ctx.ellipse(2, 3, 6, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+                            ctx.fillStyle = colors.shoeSole; // Sole
+                            ctx.fillRect(-2, 5, 12, 2.5);
+                            // Shoe Detail
+                            ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.arc(4, 4, 1.5, 0, Math.PI * 2); ctx.fill();
+                            ctx.restore();
+                        } else {
+                            // Hand
+                            ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
+                        }
                     };
 
                     const centerX = 15; const hipY = 28 + bodyY; const hipX = centerX - (Math.sin(bodyRot) * 3);
                     const shoulderX = hipX + Math.sin(bodyRot) * torsoLength; const shoulderY = hipY - Math.cos(bodyRot) * torsoLength;
                     const lenThigh = 15, lenCalf = 15; const lenArm = 12, lenForeArm = 12;
 
-                    drawLimb(shoulderX - 4, shoulderY, lenArm, lenForeArm, armL + bodyRot, foreArmL, 0, colors.shirtDark, false);
-                    drawLimb(hipX - 3, hipY, lenThigh, lenCalf, thighL + bodyRot, calfL, ankleL, colors.pantsDark, true);
+                    // Back Limbs
+                    drawLimb(shoulderX - 4, shoulderY, lenArm, lenForeArm, armL + bodyRot, foreArmL, 0, colors.shirtDark, false, colors.shirtDark);
+                    drawLimb(hipX - 3, hipY, lenThigh, lenCalf, thighL + bodyRot, calfL, ankleL, colors.pantsDark, true, colors.pantsDark);
 
+                    // Torso with Gradient
                     ctx.save(); ctx.translate(hipX, hipY); ctx.rotate(bodyRot);
-                    ctx.fillStyle = colors.shirt; ctx.beginPath(); ctx.moveTo(-6, 3); ctx.lineTo(6, 3);
+
+                    const torsoGrad = ctx.createLinearGradient(-6, 0, 6, 0); // Horizontal light
+                    torsoGrad.addColorStop(0, colors.shirtDark);
+                    torsoGrad.addColorStop(0.5, colors.shirt);
+                    torsoGrad.addColorStop(1, colors.shirtDark);
+
+                    ctx.fillStyle = torsoGrad;
+                    ctx.beginPath(); ctx.moveTo(-6, 3); ctx.lineTo(6, 3);
                     ctx.lineTo(7, -torsoLength + 2); ctx.quadraticCurveTo(0, -torsoLength - 4, -7, -torsoLength + 2);
                     ctx.lineTo(-6, 3); ctx.fill();
-                    ctx.fillStyle = colors.shirtDark; ctx.fillRect(-6, 0, 12, 5);
-                    ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1;
-                    ctx.beginPath(); ctx.moveTo(0, -torsoLength + 5); ctx.lineTo(0, 0); ctx.stroke();
+
+                    // Belt / Separation
+                    ctx.fillStyle = colors.pantsDark; ctx.fillRect(-6, 0, 12, 4);
+
+                    // Shirt fold detail
+                    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(0, -torsoLength + 5); ctx.lineTo(0, -5); ctx.stroke();
                     ctx.restore();
 
+                    // Head (High Quality)
                     const headBaseAngle = bodyRot + neckRot;
                     const headX = shoulderX + Math.sin(headBaseAngle) * 8; const headY = shoulderY - 8 - Math.cos(headBaseAngle) * 8;
                     ctx.save(); ctx.translate(headX, headY); ctx.rotate(headBaseAngle);
-                    ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(-10, -4); ctx.lineTo(-18, 2); ctx.lineTo(-8, 4); ctx.fill();
-                    ctx.beginPath(); ctx.moveTo(-4, -10); ctx.lineTo(2, -19); ctx.lineTo(8, -9); ctx.fill();
-                    ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(2, 1, 8, 0, Math.PI * 2); ctx.fill();
-                    ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.ellipse(5, 0, 1.5, 3, 0, 0, Math.PI * 2); ctx.fill();
-                    ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(4, 4, 2, 0, Math.PI / 2, false); ctx.stroke();
+
+                    // Hair Back
+                    ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2); ctx.fill();
+
+                    // Face Base with subtle gradient
+                    const skinGrad = ctx.createRadialGradient(2, -2, 2, 0, 0, 12);
+                    skinGrad.addColorStop(0, '#ffe0bd'); // Highlight
+                    skinGrad.addColorStop(1, colors.skin);
+                    ctx.fillStyle = skinGrad;
+                    ctx.beginPath(); ctx.arc(2, 1, 8.5, 0, Math.PI * 2); ctx.fill();
+
+                    // Awesome Hair Style (Spiky/Flowy)
+                    ctx.fillStyle = colors.hair;
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -5);
+                    ctx.quadraticCurveTo(-15, -15, 0, -14); // Top Spike
+                    ctx.quadraticCurveTo(10, -15, 8, -5);   // Front Spike
+                    ctx.lineTo(8, -8); ctx.lineTo(2, 1);    // Sideburns
+                    ctx.quadraticCurveTo(-4, -4, -10, -5);
+                    ctx.fill();
+
+                    // Modern Eye
+                    ctx.fillStyle = '#1a252f'; ctx.beginPath(); ctx.ellipse(5, 0, 1.8, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(5.5, -1, 0.8, 0, Math.PI * 2); ctx.fill(); // Glint
+
+                    // Smile
+                    ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(4, 5, 2.5, 0.2, Math.PI / 1.5, false); ctx.stroke();
                     ctx.restore();
 
-                    drawLimb(hipX + 3, hipY, lenThigh, lenCalf, thighR + bodyRot, calfR, ankleR, colors.pants, true);
-                    drawLimb(shoulderX + 4, shoulderY, lenArm, lenForeArm, armR + bodyRot, foreArmR, 0, colors.shirt, false);
+                    // Front Limbs
+                    drawLimb(hipX + 3, hipY, lenThigh, lenCalf, thighR + bodyRot, calfR, ankleR, colors.pants, true, colors.pantsDark);
+                    drawLimb(shoulderX + 4, shoulderY, lenArm, lenForeArm, armR + bodyRot, foreArmR, 0, colors.shirt, false, colors.shirtDark);
                     ctx.restore();
                 },
 
@@ -583,10 +979,10 @@
                     if (this.crouching) this.slideTimer++; else this.slideTimer = 0;
                 },
 
-                jump() { if (this.grounded && !this.crouching) { this.dy = CONFIG.JUMP_FORCE; this.grounded = false; spawnDust(this.x, groundY, state.speed); } },
+                jump() { if (this.grounded && !this.crouching) { this.dy = CONFIG.JUMP_FORCE; this.grounded = false; spawnDust(this.x, groundY, state.speed); AudioSys.playJump(); } },
                 cutJump() { if (this.dy < -5) this.dy = -5; },
                 fastFall() { if (!this.grounded) { this.dy = 25; this.crouching = true; } else { this.crouch(); } },
-                crouch() { if (this.grounded) { this.crouching = true; this.h = 30; this.w = 20; spawnDust(this.x, groundY, state.speed); } },
+                crouch() { if (this.grounded) { this.crouching = true; this.h = 30; this.w = 20; spawnDust(this.x, groundY, state.speed); AudioSys.playSlide(); } },
                 standUp() { this.crouching = false; this.h = 50; this.w = 30; }
             };
             const obstacles = [];
@@ -627,15 +1023,22 @@
                         this.passed = true; let reward = 0;
                         if (this.type === 'bench') { const gap = this.y - (player.y + player.h); if (gap > 0 && gap < 90 && player.dy < 10) reward = 25; }
                         else { if (player.crouching && player.slideTimer < 15) reward = 15; }
-                        if (reward > 0) { state.score += reward; state.visualScore = Math.floor(state.score); scoreEl.innerText = state.visualScore; showFloatingText("CLOSE CALL! +" + reward, player.x, player.y - 40, 'bonus'); }
+                        if (reward > 0) { state.score += reward; state.visualScore = Math.floor(state.score); showFloatingText("CLOSE CALL! +" + reward, player.x, player.y - 40, 'bonus'); }
                     }
                 }
             }
 
             function showFloatingText(text, x, y, type) {
                 const el = document.createElement('div'); el.className = 'floating-text';
-                if (type === 'room') el.className += ' text-room'; else if (type === 'floor') el.className += ' text-floor';
-                else { el.className += ' text-bonus'; el.style.left = canvas.getBoundingClientRect().left + x + 'px'; el.style.top = canvas.getBoundingClientRect().top + y + 'px'; }
+                if (type === 'room') el.className += ' text-room';
+                else if (type === 'floor') el.className += ' text-floor';
+                else if (type === 'bonus') el.className += ' text-bonus';
+                else { el.className += ' text-penalty'; } // Default/Penalty
+
+                if (type === 'bonus' || type === 'penalty') {
+                    el.style.left = canvas.getBoundingClientRect().left + x + 'px';
+                    el.style.top = canvas.getBoundingClientRect().top + y + 'px';
+                }
                 el.innerText = text; document.body.appendChild(el); setTimeout(() => el.remove(), 1200);
             }
 
@@ -660,46 +1063,196 @@
                     roomEl.innerText = state.roomNumber;
                     state.characterIndex++;
                     const nextChar = characterRoster[state.characterIndex % characterRoster.length];
-                    showCharacterUnlock(nextChar.name);
+
+                    // Trigger Cinematic Unlock
+                    state.cinematic = {
+                        active: true,
+                        timer: 180, // 3 seconds 
+                        text: "CHARACTER DETECTED",
+                        subText: nextChar.name
+                    };
+                    state.transitionOpacity = 1.0; // Flash effect
 
                     if (state.roomsClearedInFloor >= 5) { state.floorNumber++; state.roomsClearedInFloor = 0; state.visualScore += 150; state.score += 150; state.bgHue = (state.bgHue + 50) % 360; floorEl.innerText = state.floorNumber; showFloatingText("FLOOR " + state.floorNumber + " REACHED!", 0, 0, 'floor'); showFloatingText("BONUS +150", 0, 0, 'room'); }
                     else { showFloatingText("LEVEL UP!", 0, 0, 'room'); }
                 }
             }
 
+            // --- CINEMATIC SYSTEM ---
+            const CinematicSys = {
+                draw() {
+                    if (!state.cinematic.active) return;
+                    state.cinematic.timer--;
+                    if (state.cinematic.timer <= 0) state.cinematic.active = false;
+
+                    const t = 180 - state.cinematic.timer; // Time elapsed
+                    const alpha = Math.min(1, state.cinematic.timer / 20); // Fade out at end
+                    const slideIn = Math.min(1, t / 20); // Slide in at start
+
+                    ctx.save();
+                    // Letterbox Bars
+                    const barHeight = 80 * slideIn;
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, cw, barHeight);
+                    ctx.fillRect(0, ch - barHeight, cw, barHeight);
+
+                    // Overlay Darken
+                    ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * alpha})`;
+                    ctx.fillRect(0, barHeight, cw, ch - barHeight * 2);
+
+                    // Text
+                    ctx.textAlign = 'center';
+                    ctx.translate(cw / 2, ch / 2);
+
+                    // Main Text (Sub)
+                    ctx.font = '900 40px Arial';
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.fillText(state.cinematic.subText, 0, 10);
+
+                    // Sub Text (Label)
+                    ctx.font = '700 16px Arial';
+                    ctx.fillStyle = `rgba(241, 196, 15, ${alpha})`;
+                    ctx.letterSpacing = '4px';
+                    ctx.fillText(state.cinematic.text, 0, -40);
+
+                    ctx.restore();
+                }
+            };
+
+            function showCharacterUnlock(name) {
+                // Legacy support or direct call wrapper
+                const toast = document.getElementById('charToast');
+                // We keep the toast for UI feedback but rely on Cinematic for "Professional" look
+                document.getElementById('charNameText').innerText = name;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
+            }
+
             function gameLoop() {
-                if (!state.playing) return;
-                state.animDistance += state.speed * 0.028;
+                if (!state.playing && state.shakeTime <= 0) return;
+
                 ctx.clearRect(0, 0, cw, ch);
+                ctx.save();
+
+                if (state.shakeTime > 0) {
+                    state.shakeTime--;
+                    const magnitude = (state.shakeTime / 20) * 10;
+                    const dx = (Math.random() - 0.5) * magnitude;
+                    const dy = (Math.random() - 0.5) * magnitude;
+                    ctx.translate(dx, dy);
+                }
+
+                if (state.playing) state.animDistance += state.speed * 0.028;
+
                 drawBackground(); drawFloor(); updateAndDrawParticles();
-                player.update(); player.draw();
-                if (state.speed > 12) {
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 2;
-                    for (let i = 0; i < 3; i++) { let lx = Math.random() * cw; let ly = Math.random() * ch; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx - 100, ly); ctx.stroke(); }
+
+                if (state.playing) {
+                    player.update();
                 }
-                const minGap = 350 + state.speed * 15;
-                if (cw - lastSpawnX > minGap && Math.random() < 0.04) {
-                    const o = obstacles.find(o => !o.active);
-                    if (o) { o.spawn(cw, Math.random() > 0.55 ? 'bench' : 'wire'); lastSpawnX = cw; }
-                } else lastSpawnX -= state.speed;
-                let hit = false;
-                obstacles.forEach(o => {
-                    if (o.active) {
-                        o.update(); o.draw();
-                        if (o.type === 'wire' && player.crouching) return;
-                        if (player.x + 10 < o.x + o.w && player.x + player.w - 10 > o.x && player.y + 10 < o.y + o.h - 5 && player.y + player.h - 5 > o.y + 5) hit = true;
+                player.draw();
+
+                if (state.playing) {
+                    if (state.speed > 12) {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 2;
+                        for (let i = 0; i < 3; i++) { let lx = Math.random() * cw; let ly = Math.random() * ch; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx - 100, ly); ctx.stroke(); }
                     }
-                });
-                if (hit) { gameOver(); return; }
-                state.score += 0.05; state.visualScore = Math.floor(state.score); checkProgression();
-                if (state.frame % 60 === 0) {
+                    const minGap = 350 + state.speed * 15;
+                    if (cw - lastSpawnX > minGap && Math.random() < 0.04) {
+                        const o = obstacles.find(o => !o.active);
+                        if (o) { o.spawn(cw, Math.random() > 0.55 ? 'bench' : 'wire'); lastSpawnX = cw; }
+                    } else lastSpawnX -= state.speed;
+                    let hit = false;
+                    obstacles.forEach(o => {
+                        if (o.active) {
+                            o.update(); o.draw();
+                            if (o.type === 'wire' && player.crouching) return;
+                            if (player.x + 10 < o.x + o.w && player.x + player.w - 10 > o.x && player.y + 10 < o.y + o.h - 5 && player.y + player.h - 5 > o.y + 5) hit = true;
+                        }
+                    });
 
-                    const progression = state.score / 2000;
-                    const speedRange = CONFIG.SPEED_MAX - CONFIG.SPEED_START;
+                    // --- TIME & COLLISION LOGIC ---
+                    if (hit && state.invincibleTimer <= 0) {
+                        state.gameTime += 10; // Penalty: +10 minutes
+                        state.invincibleTimer = 120; // 2 seconds invulnerability
+                        AudioSys.playGameOver(); // Crunch/Impact sound
+                        state.shakeTime = 15;
+                        showFloatingText("+10 MINS LOST!", player.x, player.y - 50, 'penalty'); // Red Text
+                    }
 
-                    state.speed = Math.min(CONFIG.SPEED_MAX, CONFIG.SPEED_START + (progression * speedRange));
+                    if (state.invincibleTimer > 0) state.invincibleTimer--;
+
+                    // --- TIME DILATION LOGIC (20 MINUTE RUN) ---
+                    if (state.playing) {
+                        // 8:55 AM = 535 minutes
+                        // 9:20 AM = 560 minutes
+                        // 9:29 AM = 569 minutes
+
+                        const currentTotalMins = Math.floor(state.gameTime);
+                        let timeIncrement = 0.00;
+
+                        if (currentTotalMins < 560) {
+                            // PHASE 1: 08:55 to 09:20 (Duration: 10 Real Minutes)
+                            // 25 game-mins / 600 seconds / 60 fps = ~0.0007
+                            timeIncrement = 0.0007;
+                        } else if (currentTotalMins < 569) {
+                            // PHASE 2: 09:20 to 09:29 (Duration: 10 Real Minutes)
+                            // 9 game-mins / 600 seconds / 60 fps = 0.00025
+                            timeIncrement = 0.00025;
+                        } else {
+                            // PHASE 3: Infinity Mode (Stuck at 09:29)
+                            timeIncrement = 0.00001;
+                        }
+
+                        state.gameTime += timeIncrement;
+                    }
+
+                    // Visualize Clock
+                    let hours = Math.floor(state.gameTime / 60);
+                    let mins = Math.floor(state.gameTime % 60);
+                    let ampm = hours >= 12 ? 'PM' : 'AM';
+                    if (hours > 12) hours -= 12;
+                    let timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${ampm}`;
+                    timeEl.innerText = timeStr;
+
+                    // Panic Mode Color
+                    timeEl.style.color = state.gameTime >= 560 ? '#e74c3c' : '#f1c40f'; // 560 = 9:20 AM
+
+                    // Game Over Condition: 9:30 AM (570)
+                    if (state.gameTime >= state.maxTime) {
+                        gameOver();
+                    } else {
+                        state.score += 0.05; state.visualScore = Math.floor(state.score); checkProgression();
+                        if (state.frame % 60 === 0) {
+                            const progression = Math.min(1, state.score / 10000);
+                            const speedRange = CONFIG.SPEED_MAX - CONFIG.SPEED_START;
+                            state.speed = CONFIG.SPEED_START + (progression * speedRange);
+                            const speedRatio = state.speed / CONFIG.SPEED_MAX;
+                            CONFIG.GRAVITY = 0.8 + (speedRatio * 0.45);
+                            CONFIG.JUMP_FORCE = -18 - (speedRatio * 4);
+                        }
+                    }
+                } else {
+                    // Draw static obstacles if not playing
+                    obstacles.forEach(o => { if (o.active) o.draw(); });
                 }
-                state.frame++; scoreEl.innerText = state.visualScore; animationId = requestAnimationFrame(gameLoop);
+
+                state.frame++;
+
+                // CINEMATIC & TRANSITION LAYER
+                CinematicSys.draw();
+
+                if (state.transitionOpacity > 0) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${state.transitionOpacity})`;
+                    ctx.fillRect(0, 0, cw, ch);
+                    state.transitionOpacity -= 0.02; // Slow fade out
+                }
+
+                ctx.restore();
+
+                // Continue loop if playing OR shaking OR cinematic active
+                if (state.playing || state.shakeTime > 0 || state.cinematic.active) {
+                    animationId = requestAnimationFrame(gameLoop);
+                }
             }
 
             function drawFloor() {
@@ -712,25 +1265,39 @@
 
                 ctx.strokeStyle = `hsla(${state.bgHue}, 70%, 70%, 0.8)`; ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = `hsla(${state.bgHue}, 70%, 70%, 1)`;
                 ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(cw, groundY); ctx.stroke(); ctx.shadowBlur = 0;
+
+                // --- SUBLIMINAL HIGH SCORE ---
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.font = 'bold 40px Arial'; // Smaller font
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fillText("BEST: " + state.highScore, cw / 2, groundY + 200); // Lower position
+                ctx.restore();
             }
 
             function drawStaticScene() { ctx.clearRect(0, 0, cw, ch); drawBackground(); drawFloor(); player.y = groundY - player.h; player.draw(); }
             function startGame() {
                 state.playing = true; state.isGameOver = false; state.score = 0; state.visualScore = 0; state.speed = CONFIG.SPEED_START; state.frame = 0; state.animDistance = 0; lastSpawnX = 0;
                 state.roomNumber = 101; state.floorNumber = 1; state.roomsClearedInFloor = 0; state.nextRoomThreshold = CONFIG.ROOM_DISTANCE; state.bgHue = 220; state.spawnMilestoneDoor = false;
+                state.gameTime = 535; state.invincibleTimer = 0; // Reset Time (8:55)
 
                 // RESET CHARACTER TO GOVIND
                 state.characterIndex = 0;
                 showCharacterUnlock(characterRoster[0].name);
 
-                roomEl.innerText = state.roomNumber; floorEl.innerText = state.floorNumber; scoreEl.innerText = 0;
+                roomEl.innerText = state.roomNumber; floorEl.innerText = state.floorNumber;
                 particles.length = 0; bgObjects.length = 0; document.querySelectorAll('.floating-text').forEach(e => e.remove());
                 player.y = groundY - player.h; player.dy = 0; player.grounded = true; player.standUp();
-                obstacles.forEach(o => o.active = false); modal.style.display = 'none'; startScreen.style.display = 'none'; gameLoop();
+                obstacles.forEach(o => o.active = false); modal.style.display = 'none'; startScreen.style.display = 'none';
+                AudioSys.init(); toggleMusic(true);
+                gameLoop();
             }
             function gameOver() {
-                state.playing = false; state.isGameOver = true; cancelAnimationFrame(animationId);
-                if (state.visualScore > state.highScore) { state.highScore = state.visualScore; localStorage.setItem('cc_hallway_hiscore', state.highScore); highScoreEl.innerText = state.highScore; }
+                state.playing = false; state.isGameOver = true;
+                state.shakeTime = 20;
+                // cancelAnimationFrame(animationId); // Removed to allow shake loop
+                AudioSys.playGameOver(); toggleMusic(false);
+                if (state.visualScore > state.highScore) { state.highScore = state.visualScore; localStorage.setItem('cc_hallway_hiscore', state.highScore); }
                 finalScoreEl.innerText = Math.floor(state.score); deathReasonEl.innerText = FAIL_MESSAGES[Math.floor(Math.random() * FAIL_MESSAGES.length)]; modal.style.display = 'block';
             }
             function inputAction(e) {
