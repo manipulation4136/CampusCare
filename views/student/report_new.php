@@ -416,6 +416,8 @@ function playAchievementSound() {
 
 <script src="<?= BASE_URL ?>assets/js/offline-db.js"></script>
 <script>
+const USER_ROLE = "<?php echo $_SESSION['user']['role']; ?>";
+
 <?php if ($error === 'DUPLICATE_REPORT'): ?>
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('duplicateModal').style.display = 'block';
@@ -495,14 +497,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 offlineBar.style.zIndex = '10001';
                 offlineBar.style.fontWeight = 'bold';
                 offlineBar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
-                offlineBar.innerText = 'You are Offline. Reports will be saved.';
+                offlineBar.innerText = 'You are Offline. Reports will be saved locally.';
                 document.body.appendChild(offlineBar);
                 
                 // Shift body down slightly? Maybe not necessary if floating, but ensuring visibility
                 // document.body.style.marginTop = '40px'; 
             }
             
-            if (!gameBtn) {
+            if (USER_ROLE === 'student' && !gameBtn) {
                 const header = document.querySelector('.login-header');
                 if (header) {
                      gameBtn = document.createElement('a');
