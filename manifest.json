@@ -1,7 +1,7 @@
 {
   "name": "CampusCare",
   "short_name": "CampusCare",
-  "start_url": "/views/login.php",
+  "start_url": "/index.php",
   "display": "standalone",
   "background_color": "#101531",
   "theme_color": "#101531",
