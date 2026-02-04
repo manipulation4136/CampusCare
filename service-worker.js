@@ -1,36 +1,32 @@
-importScripts('/assets/js/offline-db.js'); // പാത്ത് കൃത്യമാണെന്ന് ഉറപ്പുവരുത്തുക
+importScripts('/assets/js/offline-db.js');
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open('v1').then((cache) => {
-      // പ്രധാനം: ഇതിൽ ലിസ്റ്റ് ചെയ്ത എല്ലാ ഫയലുകളും ഫോൾഡറിൽ ഉണ്ടെന്ന് ഉറപ്പുവരുത്തുക.
-      // ഒരെണ്ണം ഇല്ലെങ്കിൽ പോലും Service Worker വർക്ക് ചെയ്യില്ല.
+      // CRITICAL FIX: Only include files that ACTUALLY exist in your folder.
       return cache.addAll([
         '/',
         '/index.php',
         '/offline.html',
-        '/assets/css/style.css', 
-        '/assets/js/app.js',
+        '/assets/css/style.css',   // Corrected Path
+        '/assets/js/app.js',       // Good to have
         '/assets/js/offline-db.js',
-        '/bg-music.MP3'
+        '/bg-music.mp3'            // Case sensitive. Ensure file is named exactly this.
       ]);
     })
   );
 });
 
 self.addEventListener('fetch', (event) => {
-  // Navigation Requests (HTML Pages)
+  // 1. Navigation Requests (HTML Pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
-        // നെറ്റ് കിട്ടിയില്ലെങ്കിൽ മാത്രം ഇവിടെ വരും.
-        
-        // 1. ആദ്യം നോക്കുക, നമ്മൾ പോകാൻ ശ്രമിച്ച പേജ് (ഉദാ: Dashboard or Game) കാഷെയിൽ ഉണ്ടോ എന്ന്.
+        // Network Failed. Check Cache.
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
-            return cachedResponse; // ഉണ്ടെങ്കിൽ അത് കാണിക്കുക (ഗെയിം ലോഡ് ആകും).
+            return cachedResponse;
           }
-          // 2. ഇല്ലെങ്കിൽ മാത്രം offline.html കാണിക്കുക.
           return caches.match('/offline.html');
         });
       })
@@ -38,7 +34,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Other Requests (Images, CSS, JS) - Cache First Strategy
+  // 2. Other Requests (Images, CSS, JS)
   event.respondWith(
     caches.match(event.request).then((response) => {
       return response || fetch(event.request);
@@ -46,7 +42,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Sync Event (ഇതിൽ മാറ്റമില്ല)
+// Sync event keeps same...
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-new-reports') {
     event.waitUntil(
