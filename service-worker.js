@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
   '/assets/css/style.css',
   '/assets/js/app.js',
   '/assets/js/offline-db.js',
-  '/bg-music.MP3' // ഫയൽ നെയിം കൃത്യമാണെന്ന് ഉറപ്പുവരുത്തുക
+  '/bg-music.mp3' 
 ];
 
 self.addEventListener('install', (event) => {
@@ -108,3 +108,4 @@ self.addEventListener('sync', (event) => {
     );
   }
 });
+
