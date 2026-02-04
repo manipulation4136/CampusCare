@@ -301,7 +301,7 @@ function playAchievementSound() {
         <script>playAchievementSound();</script>
     <?php endif; ?>
 
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" id="reportForm">
         <?= get_csrf_input() ?>
         <input type="hidden" name="is_relocated" id="is_relocated" value="0">
         
@@ -414,12 +414,132 @@ function playAchievementSound() {
     </div>
 </div>
 
+<script src="<?= BASE_URL ?>assets/js/offline-db.js"></script>
 <script>
 <?php if ($error === 'DUPLICATE_REPORT'): ?>
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('duplicateModal').style.display = 'block';
 });
 <?php endif; ?>
+
+document.addEventListener('DOMContentLoaded', function() {
+    const reportForm = document.getElementById('reportForm');
+    
+    // Register Service Worker if possible
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('<?= BASE_URL ?>service-worker.js')
+        .then(reg => console.log('SW Registered', reg))
+        .catch(err => console.log('SW Failed', err));
+    }
+
+    // 1. Submit Listener
+    reportForm.addEventListener('submit', function(e) {
+        if (!navigator.onLine) {
+            e.preventDefault();
+            
+            const formData = new FormData(reportForm);
+            // Convert FormData to plain object for IndexedDB
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+            
+            saveReportLocally(data).then(() => {
+                // Register Background Sync
+                if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        return registration.sync.register('sync-new-reports');
+                    });
+                }
+                
+                // Clear form & UI Feedback
+                reportForm.reset();
+                
+                // Show temporary success message
+                const msg = document.createElement('div');
+                msg.className = 'alert success';
+                msg.innerHTML = '<i class="fa-solid fa-save"></i> Saved offline. Will send automatically.';
+                msg.style.marginBottom = '20px';
+                
+                // Insert before form
+                reportForm.parentNode.insertBefore(msg, reportForm);
+                
+                // Remove message after 3 seconds
+                setTimeout(() => msg.remove(), 3000);
+            }).catch(err => {
+                console.error("Failed to save report offline", err);
+                alert("Failed to save report offline. Please try again.");
+            });
+        }
+    });
+
+    // 2. UI Updates for Offline Status
+    function updateOnlineStatus() {
+        const isOffline = !navigator.onLine;
+        const offlineId = 'offline-header-bar';
+        let offlineBar = document.getElementById(offlineId);
+        let gameBtn = document.getElementById('offline-game-btn');
+        
+        if (isOffline) {
+            if (!offlineBar) {
+                offlineBar = document.createElement('div');
+                offlineBar.id = offlineId;
+                offlineBar.style.position = 'fixed';
+                offlineBar.style.top = '0';
+                offlineBar.style.left = '0';
+                offlineBar.style.width = '100%';
+                offlineBar.style.backgroundColor = '#e74c3c';
+                offlineBar.style.color = '#fff';
+                offlineBar.style.textAlign = 'center';
+                offlineBar.style.padding = '10px';
+                offlineBar.style.zIndex = '10001';
+                offlineBar.style.fontWeight = 'bold';
+                offlineBar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
+                offlineBar.innerText = 'You are Offline. Reports will be saved.';
+                document.body.appendChild(offlineBar);
+                
+                // Shift body down slightly? Maybe not necessary if floating, but ensuring visibility
+                // document.body.style.marginTop = '40px'; 
+            }
+            
+            if (!gameBtn) {
+                const header = document.querySelector('.login-header');
+                if (header) {
+                     gameBtn = document.createElement('a');
+                     gameBtn.id = 'offline-game-btn';
+                     gameBtn.href = '<?= BASE_URL ?>offline.html'; // Direct to offline game
+                     gameBtn.className = 'btn-login';
+                     gameBtn.style.display = 'block';
+                     gameBtn.style.background = '#f39c12'; // Orange/Gold
+                     gameBtn.style.marginTop = '10px';
+                     gameBtn.style.textAlign = 'center';
+                     gameBtn.style.textDecoration = 'none';
+                     gameBtn.innerHTML = '<i class="fa-solid fa-gamepad"></i> 🎮 Play Time Killer';
+                     header.appendChild(gameBtn);
+                }
+            }
+            
+        } else {
+            // Online
+             if (offlineBar) offlineBar.remove();
+             if (gameBtn) gameBtn.remove();
+             
+             // Try manual sync if needed, though SW handles it usually
+             if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                  navigator.serviceWorker.ready.then(registration => {
+                      registration.sync.register('sync-new-reports');
+                  });
+             }
+        }
+    }
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    // Check initially
+    updateOnlineStatus();
+});
+
 
 // ... (Top of scripts)
 let isAutoFilling = false;
@@ -798,15 +918,6 @@ textarea.input-dark::placeholder { color: rgba(255, 255, 255, 0.6); }
     border-bottom: none;
 }
 .dropdown-option:hover, .dropdown-option.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-.dropdown-option small {
-    display: block;
-    color: #aaa;
-    font-size: 0.85em;
-    margin-top: 2px;
+    background: rgba(255,255,255,0.1);
 }
 </style>
-
-<?php include __DIR__ . '/../partials/footer.php'; ?>
