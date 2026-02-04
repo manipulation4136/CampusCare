@@ -237,12 +237,6 @@
             font-size: 1.5rem;
         }
 
-        .text-penalty {
-            color: #e74c3c;
-            font-size: 2rem;
-            text-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
-        }
-
         .text-room {
             color: #2ecc71;
             font-size: 2rem;
@@ -298,18 +292,19 @@
         </div>
         <div class="stat-box"><span class="stat-label">ROOM</span><span class="stat-val" id="roomDisplay">101</span>
         </div>
+        <div class="stat-box"><span class="stat-label">SCORE</span><span class="stat-val" id="scoreDisplay">0</span>
+        </div>
     </div>
 
     <div class="ui-layer-right">
-        <div class="stat-box"><span class="stat-label">TIME</span><span class="stat-val" id="timeDisplay">08:55</span>
+        <div class="stat-box"><span class="stat-label">BEST</span><span class="stat-val" id="highScoreDisplay">0</span>
         </div>
     </div>
 
     <div id="startScreen">
-        <h1 style="color:#e74c3c;">LATE FOR EXAM!</h1>
-        <p style="color:#f1c40f; font-weight:bold; font-size: 1.2rem;">RUN TO THE TOP FLOOR!</p>
-        <p style="color:#6ea8fe; font-weight:bold; margin-top:15px;">TAP TO START</p>
-        <p style="opacity:0.5; font-size:0.8em; margin-top:10px">LEFT: SLIDE | RIGHT: JUMP</p>
+        <h1>HALLWAY DASH</h1>
+        <p style="color:#6ea8fe; font-weight:bold;">TAP TO START</p>
+        <p style="opacity:0.5; font-size:0.8em; margin-top:20px">LEFT: SLIDE | RIGHT: JUMP</p>
     </div>
 
     <div id="gameOverModal">
@@ -332,9 +327,10 @@
         (function () {
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
+            const scoreEl = document.getElementById('scoreDisplay');
             const roomEl = document.getElementById('roomDisplay');
             const floorEl = document.getElementById('floorDisplay');
-            const timeEl = document.getElementById('timeDisplay');
+            const highScoreEl = document.getElementById('highScoreDisplay');
             const modal = document.getElementById('gameOverModal');
             const startScreen = document.getElementById('startScreen');
             const retryBtn = document.getElementById('retryBtn');
@@ -350,14 +346,7 @@
                 SPEED_MAX: 17,
                 ROOM_DISTANCE: 300
             };
-            const FAIL_MESSAGES = [
-                "Forgot Hall Ticket!",
-                "Exam Started 10 Mins Ago!",
-                "Principal Caught You!",
-                "Stopped to Chat!",
-                "Bus Left Without You!",
-                "Pen Leaked in Pocket!"
-            ];
+            const FAIL_MESSAGES = ["Tripped on a wire!", "Principal saw you running!", "Late for the Exam!", "ID Card Missing!", "Caught by the Squad!"];
 
             const AudioSys = {
                 ctx: null,
@@ -432,13 +421,8 @@
 
             // Added characterIndex to state
             // Added characterIndex to state
-            // Added characterIndex to state
-            // Added characterIndex to state
-            // Added characterIndex to state
-            // Added characterIndex to state
-            // Added characterIndex to state
-            let state = { playing: false, score: 0, visualScore: 0, highScore: parseInt(localStorage.getItem('cc_hallway_hiscore')) || 0, speed: CONFIG.SPEED_START, frame: 0, animDistance: 0, isGameOver: false, roomNumber: 101, floorNumber: 1, nextRoomThreshold: CONFIG.ROOM_DISTANCE, roomsClearedInFloor: 0, bgHue: 220, spawnMilestoneDoor: false, characterIndex: 0, shakeTime: 0, bgPatternQueue: [], cinematic: { active: false, timer: 0, text: "", subText: "" }, transitionOpacity: 0, gameTime: 535, maxTime: 570, invincibleTimer: 0 };
-            // highScoreEl.innerText = state.highScore;
+            let state = { playing: false, score: 0, visualScore: 0, highScore: parseInt(localStorage.getItem('cc_hallway_hiscore')) || 0, speed: CONFIG.SPEED_START, frame: 0, animDistance: 0, isGameOver: false, roomNumber: 101, floorNumber: 1, nextRoomThreshold: CONFIG.ROOM_DISTANCE, roomsClearedInFloor: 0, bgHue: 220, spawnMilestoneDoor: false, characterIndex: 0, shakeTime: 0, bgPatternQueue: [] };
+            highScoreEl.innerText = state.highScore;
 
             let cw, ch, groundY;
 
@@ -775,8 +759,6 @@
             const player = {
                 x: 60, y: 0, w: 30, h: 50, dy: 0, grounded: false, crouching: false, slideTimer: 0,
                 draw() {
-                    // Blink effect when invulnerable
-                    if (state.invincibleTimer > 0 && state.frame % 10 < 5) return;
                     ctx.save(); ctx.translate(this.x, this.y);
 
                     // --- DYNAMIC OUTFIT SELECTION ---
@@ -812,36 +794,11 @@
                         foreArmL = 1.5; foreArmR = 1.5;
                         if (this.slideTimer > 6) { const vibe = Math.sin(Date.now() / 20) * 0.5; bodyY += vibe; thighR += vibe * 0.05; }
                     } else if (!this.grounded) {
-                        // vFactor: -1 (Jumping UP) to +1 (Falling DOWN)
-                        const vFactor = Math.max(-1, Math.min(1, this.dy / 10));
-
-                        // 1. BODY ROTATION (ഏറ്റവും പ്രധാനം)
-                        // ചാടുമ്പോൾ ശരീരം മുന്നോട്ട് ആഞ്ഞിരിക്കണം (Aerodynamic).
-                        // Jump (-1): 0.55 (Forward Lean) | Fall (1): 0.35 (Straighten for landing)
-                        bodyRot = 0.45 - (vFactor * 0.1);
-
-                        // Body Lift
-                        bodyY = -6 + (Math.abs(vFactor) * 2);
-
-                        // 2. LEGS (Sprinter Style)
-                        // Right Leg (Lead Leg - മുന്നിലെ കാൽ): 
-                        // മുകളിലേക്ക് പോകുമ്പോൾ നെഞ്ച് വരെ ഉയർത്തുന്നു (High Knee), താഴേക്ക് വരുമ്പോൾ തറയിൽ തൊടാൻ നീട്ടുന്നു.
-                        thighR = -1.2 + (vFactor * 0.8); // High up (-2.0) -> Down (-0.4)
-                        calfR = 1.8 + (vFactor * 0.2);   // കാൽമുട്ട് മടക്കി വെക്കുന്നു
-                        ankleR = 0.5;
-
-                        // Left Leg (Trail Leg - പുറകിലെ കാൽ):
-                        // ചാടുമ്പോൾ പുറകോട്ട് നീട്ടിയിരിക്കും (Kick off), ലാൻഡ് ചെയ്യുമ്പോൾ ബാലൻസിനായി മടക്കും.
-                        thighL = 0.8 + (vFactor * 0.5);  // Back (0.3) -> Further Back/Down (1.3)
-                        calfL = 0.5 + (vFactor * 1.0);   // Straight -> Bent
-                        ankleL = 0.5;
-
-                        // 3. ARMS (Power Pump)
-                        // കാലുകൾക്ക് വിപരീതമായി കൈകൾ വീശുന്നു
-                        armR = 1.5 - (vFactor * 0.5);   // Right Arm Back
-                        foreArmR = 1.5;
-                        armL = -1.5 + (vFactor * 0.5);  // Left Arm Forward (Punching air)
-                        foreArmL = 1.5;
+                        neckRot = 0;
+                        if (this.dy < -12) { bodyRot = 0.45; bodyY = -2; thighL = -1.1; calfL = 0.1; ankleL = 0.8; thighR = 1.9; calfR = 2.1; ankleR = 0.3; armL = -1.9; foreArmL = 0.8; armR = 1.3; foreArmR = 1.8; }
+                        else if (this.dy < -10) { bodyRot = 0.4; bodyY = -5; thighL = -0.5; calfL = 0.4; ankleL = 0.6; thighR = 2.0; calfR = 2.2; ankleR = 0.2; armL = -1.7; foreArmL = 1.0; armR = 1.2; foreArmR = 1.7; }
+                        else if (this.dy < 4) { bodyRot = 0.12; bodyY = -14; thighL = 2.2; calfL = 2.4; ankleL = 0.2; thighR = 2.2; calfR = 2.4; ankleR = 0.2; armL = -0.8; foreArmL = 1.7; armR = 0.3; foreArmR = 1.7; }
+                        else { bodyRot = 0.2; bodyY = -6; thighL = 0.7; calfL = 0.4; ankleL = 0.5; thighR = 0.7; calfR = 0.4; ankleR = 0.5; armL = -1.4; foreArmL = 0.8; armR = 1.0; foreArmR = 0.8; }
                     } else if (state.playing) {
                         neckRot = 0; bodyY = Math.cos(t * 2) * 2 - Math.abs(Math.sin(t * 2)) * 1.5; bodyRot = 0.45 + Math.sin(t) * 0.08;
                         const strideAmp = 1.3; thighL = Math.sin(t) * strideAmp + Math.sin(t * 2) * 0.15; thighR = Math.sin(t + Math.PI) * strideAmp + Math.sin(t * 2 + Math.PI) * 0.15;
@@ -1023,22 +980,15 @@
                         this.passed = true; let reward = 0;
                         if (this.type === 'bench') { const gap = this.y - (player.y + player.h); if (gap > 0 && gap < 90 && player.dy < 10) reward = 25; }
                         else { if (player.crouching && player.slideTimer < 15) reward = 15; }
-                        if (reward > 0) { state.score += reward; state.visualScore = Math.floor(state.score); showFloatingText("CLOSE CALL! +" + reward, player.x, player.y - 40, 'bonus'); }
+                        if (reward > 0) { state.score += reward; state.visualScore = Math.floor(state.score); scoreEl.innerText = state.visualScore; showFloatingText("CLOSE CALL! +" + reward, player.x, player.y - 40, 'bonus'); }
                     }
                 }
             }
 
             function showFloatingText(text, x, y, type) {
                 const el = document.createElement('div'); el.className = 'floating-text';
-                if (type === 'room') el.className += ' text-room';
-                else if (type === 'floor') el.className += ' text-floor';
-                else if (type === 'bonus') el.className += ' text-bonus';
-                else { el.className += ' text-penalty'; } // Default/Penalty
-
-                if (type === 'bonus' || type === 'penalty') {
-                    el.style.left = canvas.getBoundingClientRect().left + x + 'px';
-                    el.style.top = canvas.getBoundingClientRect().top + y + 'px';
-                }
+                if (type === 'room') el.className += ' text-room'; else if (type === 'floor') el.className += ' text-floor';
+                else { el.className += ' text-bonus'; el.style.left = canvas.getBoundingClientRect().left + x + 'px'; el.style.top = canvas.getBoundingClientRect().top + y + 'px'; }
                 el.innerText = text; document.body.appendChild(el); setTimeout(() => el.remove(), 1200);
             }
 
@@ -1063,69 +1013,11 @@
                     roomEl.innerText = state.roomNumber;
                     state.characterIndex++;
                     const nextChar = characterRoster[state.characterIndex % characterRoster.length];
-
-                    // Trigger Cinematic Unlock
-                    state.cinematic = {
-                        active: true,
-                        timer: 180, // 3 seconds 
-                        text: "CHARACTER DETECTED",
-                        subText: nextChar.name
-                    };
-                    state.transitionOpacity = 1.0; // Flash effect
+                    showCharacterUnlock(nextChar.name);
 
                     if (state.roomsClearedInFloor >= 5) { state.floorNumber++; state.roomsClearedInFloor = 0; state.visualScore += 150; state.score += 150; state.bgHue = (state.bgHue + 50) % 360; floorEl.innerText = state.floorNumber; showFloatingText("FLOOR " + state.floorNumber + " REACHED!", 0, 0, 'floor'); showFloatingText("BONUS +150", 0, 0, 'room'); }
                     else { showFloatingText("LEVEL UP!", 0, 0, 'room'); }
                 }
-            }
-
-            // --- CINEMATIC SYSTEM ---
-            const CinematicSys = {
-                draw() {
-                    if (!state.cinematic.active) return;
-                    state.cinematic.timer--;
-                    if (state.cinematic.timer <= 0) state.cinematic.active = false;
-
-                    const t = 180 - state.cinematic.timer; // Time elapsed
-                    const alpha = Math.min(1, state.cinematic.timer / 20); // Fade out at end
-                    const slideIn = Math.min(1, t / 20); // Slide in at start
-
-                    ctx.save();
-                    // Letterbox Bars
-                    const barHeight = 80 * slideIn;
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(0, 0, cw, barHeight);
-                    ctx.fillRect(0, ch - barHeight, cw, barHeight);
-
-                    // Overlay Darken
-                    ctx.fillStyle = `rgba(0, 0, 0, ${0.4 * alpha})`;
-                    ctx.fillRect(0, barHeight, cw, ch - barHeight * 2);
-
-                    // Text
-                    ctx.textAlign = 'center';
-                    ctx.translate(cw / 2, ch / 2);
-
-                    // Main Text (Sub)
-                    ctx.font = '900 40px Arial';
-                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-                    ctx.fillText(state.cinematic.subText, 0, 10);
-
-                    // Sub Text (Label)
-                    ctx.font = '700 16px Arial';
-                    ctx.fillStyle = `rgba(241, 196, 15, ${alpha})`;
-                    ctx.letterSpacing = '4px';
-                    ctx.fillText(state.cinematic.text, 0, -40);
-
-                    ctx.restore();
-                }
-            };
-
-            function showCharacterUnlock(name) {
-                // Legacy support or direct call wrapper
-                const toast = document.getElementById('charToast');
-                // We keep the toast for UI feedback but rely on Cinematic for "Professional" look
-                document.getElementById('charNameText').innerText = name;
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 3000);
             }
 
             function gameLoop() {
@@ -1169,58 +1061,8 @@
                             if (player.x + 10 < o.x + o.w && player.x + player.w - 10 > o.x && player.y + 10 < o.y + o.h - 5 && player.y + player.h - 5 > o.y + 5) hit = true;
                         }
                     });
-
-                    // --- TIME & COLLISION LOGIC ---
-                    if (hit && state.invincibleTimer <= 0) {
-                        state.gameTime += 10; // Penalty: +10 minutes
-                        state.invincibleTimer = 120; // 2 seconds invulnerability
-                        AudioSys.playGameOver(); // Crunch/Impact sound
-                        state.shakeTime = 15;
-                        showFloatingText("+10 MINS LOST!", player.x, player.y - 50, 'penalty'); // Red Text
-                    }
-
-                    if (state.invincibleTimer > 0) state.invincibleTimer--;
-
-                    // --- TIME DILATION LOGIC (20 MINUTE RUN) ---
-                    if (state.playing) {
-                        // 8:55 AM = 535 minutes
-                        // 9:20 AM = 560 minutes
-                        // 9:29 AM = 569 minutes
-
-                        const currentTotalMins = Math.floor(state.gameTime);
-                        let timeIncrement = 0.00;
-
-                        if (currentTotalMins < 560) {
-                            // PHASE 1: 08:55 to 09:20 (Duration: 10 Real Minutes)
-                            // 25 game-mins / 600 seconds / 60 fps = ~0.0007
-                            timeIncrement = 0.0007;
-                        } else if (currentTotalMins < 569) {
-                            // PHASE 2: 09:20 to 09:29 (Duration: 10 Real Minutes)
-                            // 9 game-mins / 600 seconds / 60 fps = 0.00025
-                            timeIncrement = 0.00025;
-                        } else {
-                            // PHASE 3: Infinity Mode (Stuck at 09:29)
-                            timeIncrement = 0.00001;
-                        }
-
-                        state.gameTime += timeIncrement;
-                    }
-
-                    // Visualize Clock
-                    let hours = Math.floor(state.gameTime / 60);
-                    let mins = Math.floor(state.gameTime % 60);
-                    let ampm = hours >= 12 ? 'PM' : 'AM';
-                    if (hours > 12) hours -= 12;
-                    let timeStr = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')} ${ampm}`;
-                    timeEl.innerText = timeStr;
-
-                    // Panic Mode Color
-                    timeEl.style.color = state.gameTime >= 560 ? '#e74c3c' : '#f1c40f'; // 560 = 9:20 AM
-
-                    // Game Over Condition: 9:30 AM (570)
-                    if (state.gameTime >= state.maxTime) {
-                        gameOver();
-                    } else {
+                    if (hit) { gameOver(); /* return removed to allow draw to finish */ }
+                    else {
                         state.score += 0.05; state.visualScore = Math.floor(state.score); checkProgression();
                         if (state.frame % 60 === 0) {
                             const progression = Math.min(1, state.score / 10000);
@@ -1236,21 +1078,11 @@
                     obstacles.forEach(o => { if (o.active) o.draw(); });
                 }
 
-                state.frame++;
-
-                // CINEMATIC & TRANSITION LAYER
-                CinematicSys.draw();
-
-                if (state.transitionOpacity > 0) {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${state.transitionOpacity})`;
-                    ctx.fillRect(0, 0, cw, ch);
-                    state.transitionOpacity -= 0.02; // Slow fade out
-                }
-
+                state.frame++; scoreEl.innerText = state.visualScore;
                 ctx.restore();
 
-                // Continue loop if playing OR shaking OR cinematic active
-                if (state.playing || state.shakeTime > 0 || state.cinematic.active) {
+                // Continue loop if playing OR shaking
+                if (state.playing || state.shakeTime > 0) {
                     animationId = requestAnimationFrame(gameLoop);
                 }
             }
@@ -1265,27 +1097,18 @@
 
                 ctx.strokeStyle = `hsla(${state.bgHue}, 70%, 70%, 0.8)`; ctx.lineWidth = 4; ctx.shadowBlur = 10; ctx.shadowColor = `hsla(${state.bgHue}, 70%, 70%, 1)`;
                 ctx.beginPath(); ctx.moveTo(0, groundY); ctx.lineTo(cw, groundY); ctx.stroke(); ctx.shadowBlur = 0;
-
-                // --- SUBLIMINAL HIGH SCORE ---
-                ctx.save();
-                ctx.textAlign = 'center';
-                ctx.font = 'bold 40px Arial'; // Smaller font
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-                ctx.fillText("BEST: " + state.highScore, cw / 2, groundY + 200); // Lower position
-                ctx.restore();
             }
 
             function drawStaticScene() { ctx.clearRect(0, 0, cw, ch); drawBackground(); drawFloor(); player.y = groundY - player.h; player.draw(); }
             function startGame() {
                 state.playing = true; state.isGameOver = false; state.score = 0; state.visualScore = 0; state.speed = CONFIG.SPEED_START; state.frame = 0; state.animDistance = 0; lastSpawnX = 0;
                 state.roomNumber = 101; state.floorNumber = 1; state.roomsClearedInFloor = 0; state.nextRoomThreshold = CONFIG.ROOM_DISTANCE; state.bgHue = 220; state.spawnMilestoneDoor = false;
-                state.gameTime = 535; state.invincibleTimer = 0; // Reset Time (8:55)
 
                 // RESET CHARACTER TO GOVIND
                 state.characterIndex = 0;
                 showCharacterUnlock(characterRoster[0].name);
 
-                roomEl.innerText = state.roomNumber; floorEl.innerText = state.floorNumber;
+                roomEl.innerText = state.roomNumber; floorEl.innerText = state.floorNumber; scoreEl.innerText = 0;
                 particles.length = 0; bgObjects.length = 0; document.querySelectorAll('.floating-text').forEach(e => e.remove());
                 player.y = groundY - player.h; player.dy = 0; player.grounded = true; player.standUp();
                 obstacles.forEach(o => o.active = false); modal.style.display = 'none'; startScreen.style.display = 'none';
@@ -1297,7 +1120,7 @@
                 state.shakeTime = 20;
                 // cancelAnimationFrame(animationId); // Removed to allow shake loop
                 AudioSys.playGameOver(); toggleMusic(false);
-                if (state.visualScore > state.highScore) { state.highScore = state.visualScore; localStorage.setItem('cc_hallway_hiscore', state.highScore); }
+                if (state.visualScore > state.highScore) { state.highScore = state.visualScore; localStorage.setItem('cc_hallway_hiscore', state.highScore); highScoreEl.innerText = state.highScore; }
                 finalScoreEl.innerText = Math.floor(state.score); deathReasonEl.innerText = FAIL_MESSAGES[Math.floor(Math.random() * FAIL_MESSAGES.length)]; modal.style.display = 'block';
             }
             function inputAction(e) {
