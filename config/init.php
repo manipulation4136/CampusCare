@@ -1,8 +1,8 @@
 <?php
 // Session Configuration (1 Hour)
 date_default_timezone_set('Asia/Kolkata');
-ini_set('session.gc_maxlifetime', 3600);
-session_set_cookie_params(3600);
+ini_set('session.gc_maxlifetime', 86400);
+session_set_cookie_params(86400);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -34,3 +34,4 @@ if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['user']) && !in_a
     }
 }
 ?>
+
