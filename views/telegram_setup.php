@@ -116,6 +116,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_telegram'])) {
     }
 }
 
+// 3. Handle Disconnect
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['disconnect_telegram'])) {
+    if (!verify_csrf()) die('CSRF validation failed');
+    
+    $stmt = $conn->prepare("UPDATE users SET telegram_chat_id = NULL WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    
+    if ($stmt->execute()) {
+        $telegram_chat_id = ''; // Clear variable for UI
+        set_flash('ok', 'Telegram Disconnected Successfully');
+    } else {
+        set_flash('err', 'Error disconnecting Telegram.');
+    }
+}
+
 // 🛑 PATH FIX: 'partials/' is in the same directory as 'views/' logic? 
 // No, telegram_setup.php is in 'views/'. 'partials/' is in 'views/partials/'.
 // So correct path is simply 'partials/header.php'.
@@ -163,8 +178,17 @@ include __DIR__ . '/partials/header.php';
         </div>
 
         <?php if (!empty($telegram_chat_id)): ?>
-            <div class="animate-card-entry" style="background: rgba(39, 174, 96, 0.1); color: #27ae60; padding: 10px; border-radius: 8px; margin-bottom: 20px; animation-delay: 0.5s;">
-                <strong>✅ Connected Chat ID:</strong> <?= htmlspecialchars($telegram_chat_id) ?>
+            <div class="animate-card-entry" style="background: rgba(39, 174, 96, 0.1); color: #27ae60; padding: 15px; border-radius: 8px; margin-bottom: 20px; animation-delay: 0.5s; display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                    <strong>✅ Connected Chat ID:</strong> <?= htmlspecialchars($telegram_chat_id) ?>
+                </div>
+                
+                <form method="POST" action="" onsubmit="return confirm('Are you sure you want to disconnect Telegram notifications?');">
+                    <?= get_csrf_input() ?>
+                    <button type="submit" name="disconnect_telegram" class="btn" style="background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; padding: 8px 16px; font-size: 14px; cursor: pointer; width: 100%;">
+                        ❌ Disconnect
+                    </button>
+                </form>
             </div>
         <?php endif; ?>
 
