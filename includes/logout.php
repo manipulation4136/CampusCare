@@ -22,8 +22,25 @@ if (ini_get("session.use_cookies")) {
 // 4. Destroy the session
 session_destroy();
 
-// 5. Redirect to Login (Assuming logic is in ../views/login.php)
-// Use relative path since this file is in includes/
-header("Location: ../views/login.php?msg=Logged+out+successfully");
+// 5. Client-Side Redirect to clear LocalStorage
+// header("Location: ../views/login.php?msg=Logged+out+successfully");
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        // Clear local login flag
+        localStorage.removeItem('isLoggedIn');
+        // Redirect
+        window.location.href = '../views/login.php?msg=Logged+out+successfully';
+    </script>
+</head>
+<body>
+    <noscript>
+        <meta http-equiv="refresh" content="0;url=../views/login.php?msg=Logged+out+successfully">
+    </noscript>
+</body>
+</html>
+<?php
 exit;
 ?>
