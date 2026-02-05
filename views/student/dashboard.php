@@ -255,6 +255,22 @@ include __DIR__.'/../partials/header.php';
 let html5QrcodeScanner = null;
 let isScannerActive = false;
 
+// Fix 3: Camera Permission Polyfill for Old Phones
+if (!navigator.mediaDevices) {
+    navigator.mediaDevices = {};
+}
+if (!navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia = function(constraints) {
+        const oldGetUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        if (!oldGetUserMedia) {
+            return Promise.reject(new Error('Camera API not implemented in this browser'));
+        }
+        return new Promise((resolve, reject) => {
+            oldGetUserMedia.call(navigator, constraints, resolve, reject);
+        });
+    }
+}
+
 function openScannerModal() {
     const modal = document.getElementById('scannerModal');
     modal.style.display = 'flex';
