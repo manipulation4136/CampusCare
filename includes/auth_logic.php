@@ -36,11 +36,11 @@ function handle_login($conn) {
                     $role = $u['role'];
                     $redirectUrl = BASE_URL . ($role === 'admin' ? 'views/admin/dashboard.php' : ($role === 'faculty' ? 'views/faculty/dashboard.php' : 'views/student/dashboard.php'));
                     
-                    echo "<script>
-                        localStorage.setItem('isLoggedIn', 'true');
-                        localStorage.setItem('userRole', '" . $role . "');
-                        window.location.href = '" . $redirectUrl . "';
-                    </script>";
+                    echo '<script>
+                        localStorage.setItem("isLoggedIn", "true");
+                        localStorage.setItem("userRole", "' . $role . '");
+                        window.location.href = "' . BASE_URL . 'views/' . $role . '/dashboard.php";
+                    </script>';
                     exit;
                 } else {
                     $error = 'Invalid credentials';
