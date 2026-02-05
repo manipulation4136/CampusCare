@@ -23,22 +23,20 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // 5. Client-Side Redirect to clear LocalStorage
-// header("Location: ../views/login.php?msg=Logged+out+successfully");
+// Instead of immediate header redirect, show HTML to clear storage
 ?>
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Logging out...</title>
     <script>
-        // Clear local login flag
         localStorage.removeItem('isLoggedIn');
-        // Redirect
-        window.location.href = '../views/login.php?msg=Logged+out+successfully';
+        localStorage.removeItem('userRole');
+        window.location.href = '../index.php';
     </script>
 </head>
 <body>
-    <noscript>
-        <meta http-equiv="refresh" content="0;url=../views/login.php?msg=Logged+out+successfully">
-    </noscript>
+    <p>Logging out...</p>
 </body>
 </html>
 <?php
