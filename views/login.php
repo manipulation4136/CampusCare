@@ -14,7 +14,6 @@ $error = handle_login($conn);
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#030510">
   <title>Login | CampusCare</title>
   <link rel="icon" type="image/png" sizes="32x32" href="<?= BASE_URL ?>img/logo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -93,6 +92,9 @@ $error = handle_login($conn);
     let deferredPrompt;
     const installBanner = document.getElementById('install-banner');
     const installBtn = document.getElementById('install-btn');
+
+    // Make sure we are not stuck with value 'true' if we are on login page
+    localStorage.removeItem('isLoggedIn');
 
     window.addEventListener('beforeinstallprompt', (e) => {
         // Prevent Chrome 67 and earlier from automatically showing the prompt
