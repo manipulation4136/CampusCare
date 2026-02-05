@@ -22,23 +22,11 @@ if (ini_get("session.use_cookies")) {
 // 4. Destroy the session
 session_destroy();
 
-// 5. Client-Side Redirect to clear LocalStorage
-// Instead of immediate header redirect, show HTML to clear storage
-?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Logging out...</title>
-    <script>
-        localStorage.removeItem('isLoggedIn');
-        localStorage.removeItem('userRole');
-        window.location.href = '../index.php';
-    </script>
-</head>
-<body>
-    <p>Logging out...</p>
-</body>
-</html>
-<?php
+// 5. Client-Side Redirect
+echo '<script>
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("userRole");
+        window.location.href = "../index.php"; 
+      </script>';
 exit;
 ?>
