@@ -31,7 +31,7 @@ function getRoleClass($role) {
   <link rel="icon" type="image/png" sizes="16x16" href="<?= BASE_URL ?>img/logo.png">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#030510">
+  <meta name="theme-color" content="#101531">
   <title>College Asset Damage Reporting</title>
   <meta name="csrf-token" content="<?= generate_csrf_token() ?>">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -48,6 +48,11 @@ function getRoleClass($role) {
           .catch(err => console.log('SW Failed:', err));
       });
     }
+  </script>
+  <script>
+    // Local Login Check Logic
+    // Since this header is only loaded for logged-in users (mostly), we set the flag here.
+    localStorage.setItem('isLoggedIn', 'true');
   </script>
 
 <script>
