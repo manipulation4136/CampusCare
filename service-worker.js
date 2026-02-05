@@ -36,6 +36,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // 1.5 Special Case: Dashboard (Stale-while-revalidate)
+  // We want to show the cached dashboard immediately for speed/offline,
+  // but update it in the background if network is available.
+  const url = new URL(event.request.url);
+  if (url.pathname.includes('views/student/dashboard.php')) {
+    event.respondWith(
+      caches.open('v1').then(cache => {
+        return cache.match(event.request).then(cachedResponse => {
+          const fetchPromise = fetch(event.request).then(networkResponse => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+          // Return cached response if available, otherwise wait for network
+          return cachedResponse || fetchPromise;
+        });
+      })
+    );
+    return;
+  }
+
   // 2. Other Requests (Images, CSS, JS)
   event.respondWith(
     caches.match(event.request).then((response) => {
@@ -58,11 +78,16 @@ self.addEventListener('sync', (event) => {
           }
           return fetch('views/student/report_new.php', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include' // IMPORTANT: Send cookies/session
           })
             .then((response) => {
               if (response.ok) {
                 return deleteReport(id);
+              } else {
+                return response.text().then(text => {
+                  throw new Error(`Server rejected: ${response.status} ${text}`);
+                });
               }
             })
             .catch((err) => {
