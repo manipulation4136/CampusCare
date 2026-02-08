@@ -18,27 +18,33 @@ $path = trim($path, '/');
 switch ($path) {
     case '':
     case 'login':
+    case 'index.php': // Fix: Handle explicit index.php redirect
         require __DIR__ . '/views/login.php';
         break;
+        
     case 'register':
         require __DIR__ . '/views/register.php';
         break;
+        
+    case 'logout': // Fix: Handle logout route specifically
+        require __DIR__ . '/includes/logout.php';
+        break;
+        
     case 'dashboard':
         require __DIR__ . '/views/dashboard.php';
         break;
+        
     case 'notifications':
-        require __DIR__ . '/views/notifications.php'; // Will move this next
+        require __DIR__ . '/views/notifications.php';
         break;
-    case 'logout':
-        require __DIR__ . '/includes/logout.php';
-        break;
+        
     default:
         // Check if it's a valid view file
         if (file_exists(__DIR__ . '/views/' . $path . '.php')) {
             require __DIR__ . '/views/' . $path . '.php';
         } else {
             http_response_code(404);
-            echo "404 Not Found";
+            echo "404 Not Found (" . htmlspecialchars($path) . ")";
         }
         break;
 }
@@ -46,20 +52,9 @@ switch ($path) {
 
 <script>
 // Auto-Redirect Trick for Offline PWA Startup
-// Auto-Redirect Trick for Offline PWA Startup
-if (!navigator.onLine) {
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
+if (!navigator.onLine && localStorage.getItem('isLoggedIn') === 'true') {
     const role = localStorage.getItem('userRole');
-    
-    if (isLoggedIn === 'true') {
-        // Redirect based on role
-        if (role === 'student') {
-            window.location.href = 'views/student/dashboard.php';
-        } else if (role === 'faculty') {
-            window.location.href = 'views/faculty/dashboard.php';
-        } else {
-            window.location.href = 'views/admin/dashboard.php';
-        }
-    }
+    const baseUrl = 'views/' + role + '/dashboard.php'; // Adjust based on your folder
+    window.location.href = baseUrl;
 }
 </script>
