@@ -4,6 +4,7 @@ const STATIC_ASSETS = [
   '/',
   '/index.php',
   '/offline.html',
+  '/offline-game.html',
   '/assets/css/style.css',
   '/assets/js/app.js',
   '/assets/js/offline-db.js',
