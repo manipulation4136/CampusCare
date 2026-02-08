@@ -3,7 +3,7 @@
 // Professional Logout: Clears Session & LocalStorage, then redirects to Login
 
 // 1. Start Session to access it
-require_once __DIR__ . '/../config/init.php';
+require_once __DIR__ . '/../config/config.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
