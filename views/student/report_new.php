@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (header) {
                      gameBtn = document.createElement('a');
                      gameBtn.id = 'offline-game-btn';
-                     gameBtn.href = '<?= BASE_URL ?>offline.html'; // Direct to offline game
+                     gameBtn.href = '<?= BASE_URL ?>offline-game.html'; // Direct to offline game
                      gameBtn.className = 'btn-login';
                      gameBtn.style.display = 'block';
                      gameBtn.style.background = '#f39c12'; // Orange/Gold
