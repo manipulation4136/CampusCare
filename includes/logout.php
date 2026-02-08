@@ -22,11 +22,13 @@ if (ini_get("session.use_cookies")) {
 // 4. Destroy the session
 session_destroy();
 
+
 // 5. Client-Side Redirect
+$redirect = defined('BASE_URL') ? BASE_URL . 'login' : '../index.php';
 echo '<script>
         localStorage.removeItem("isLoggedIn");
         localStorage.removeItem("userRole");
-        window.location.href = "../index.php"; 
+        window.location.href = "' . $redirect . '"; 
       </script>';
 exit;
 ?>
