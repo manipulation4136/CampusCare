@@ -29,6 +29,9 @@ switch ($path) {
     case 'notifications':
         require __DIR__ . '/views/notifications.php'; // Will move this next
         break;
+    case 'logout':
+        require __DIR__ . '/includes/logout.php';
+        break;
     default:
         // Check if it's a valid view file
         if (file_exists(__DIR__ . '/views/' . $path . '.php')) {
