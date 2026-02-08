@@ -94,7 +94,9 @@ $error = handle_login($conn);
     const installBtn = document.getElementById('install-btn');
 
     // Make sure we are not stuck with value 'true' if we are on login page
+    // This prevents the "Login Loop" where index.php auto-redirects back here
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userRole');
 
     window.addEventListener('beforeinstallprompt', (e) => {
         // Prevent Chrome 67 and earlier from automatically showing the prompt
