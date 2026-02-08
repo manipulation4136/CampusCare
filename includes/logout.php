@@ -1,105 +1,89 @@
-importScripts('/assets/js/offline-db.js');
+<?php
+// includes/logout.php
+// Professional Logout: Clears Session & LocalStorage, then redirects to Login
 
-const STATIC_ASSETS = [
-  '/',
-  '/index.php',
-  '/offline.html',
-  '/offline-game.html',
-  '/assets/css/style.css',
-  '/assets/js/app.js',
-  '/assets/js/offline-db.js',
-  '/bg-music.mp3'
-];
+// 1. Start Session to access it
+require_once __DIR__ . '/../config/config.php';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open('v1').then((cache) => {
-      // CRITICAL FIX: Only include files that ACTUALLY exist in your folder.
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
-});
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-self.addEventListener('fetch', (event) => {
-  // 1. Navigation Requests (HTML Pages)
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        // Network Failed. Check Cache.
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          return caches.match('/offline.html');
-        });
-      })
+// 2. Clear PHP Session Variables
+$_SESSION = array();
+
+// 3. Destroy Session Cookies
+if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000,
+        $params["path"], $params["domain"],
+        $params["secure"], $params["httponly"]
     );
-    return;
-  }
+}
 
-  // 1.5 Special Case: Dashboard (Stale-while-revalidate)
-  // We want to show the cached dashboard immediately for speed/offline,
-  // but update it in the background if network is available.
-  const url = new URL(event.request.url);
-  if (url.pathname.includes('views/student/dashboard.php')) {
-    event.respondWith(
-      caches.open('v1').then(cache => {
-        return cache.match(event.request).then(cachedResponse => {
-          const fetchPromise = fetch(event.request).then(networkResponse => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-          // Return cached response if available, otherwise wait for network
-          return cachedResponse || fetchPromise;
-        });
-      })
-    );
-    return;
-  }
+// 4. Destroy PHP Session
+session_destroy();
 
-  // 2. Other Requests (Images, CSS, JS)
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
-});
+// 5. Client-Side Cleanup & Redirect (The Professional Part)
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging Out...</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .loader-container {
+            text-align: center;
+            animation: fadeOut 0.5s ease-in-out 0.8s forwards; /* Smooth exit */
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+        p {
+            color: #6c757d;
+            font-size: 16px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader-container">
+        <div class="spinner"></div>
+        <p>Logging out...</p>
+    </div>
 
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-new-reports') {
-    event.waitUntil(
-      getAllReports().then((reports) => {
-        const syncPromises = reports.map((reportWrapper) => {
-          const { id, data } = reportWrapper;
-          const formData = new FormData();
-          for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-              formData.append(key, data[key]);
-            }
-          }
-          return fetch('views/student/report_new.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include' // IMPORTANT: Send cookies/session
-          })
-            .then((response) => {
-              if (response.ok) {
-                return deleteReport(id);
-              } else {
-                return response.text().then(text => {
-                  throw new Error(`Server rejected: ${response.status} ${text}`);
-                });
-              }
-            })
-            .catch((err) => {
-              console.error('Failed to sync report:', id, err);
-            });
-        });
+    <script>
+        // 1. Clear the "Offline Access" Keys
+        localStorage.removeItem("isLoggedIn");
+        localStorage.removeItem("userRole");
 
-        return Promise.all(syncPromises).then(() => {
-          self.registration.showNotification("Offline Report Sent Successfully!");
-        });
-      })
-    );
-  }
-});
+        // 2. Redirect to Login Page (index.php)
+        // Small delay ensures the storage is cleared before redirecting
+        setTimeout(() => {
+            window.location.href = "<?php echo BASE_URL; ?>index.php"; 
+        }, 800); 
+    </script>
+</body>
+</html>
