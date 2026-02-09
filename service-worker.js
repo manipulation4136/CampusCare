@@ -6,8 +6,8 @@ const STATIC_ASSETS = [
   '/assets/js/app.js'
 ];
 
-const STATIC_CACHE = 'static-v1';
-const DYNAMIC_CACHE = 'dynamic-v1';
+const STATIC_CACHE = 'static-v3';
+const DYNAMIC_CACHE = 'dynamic-v3';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
