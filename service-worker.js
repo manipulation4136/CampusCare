@@ -1,105 +1,79 @@
-importScripts('/assets/js/offline-db.js');
+const CACHE_NAME = 'static-v30'; // Version Jump
+const DYNAMIC_CACHE = 'dynamic-v30';
 
+// Use relative paths
 const STATIC_ASSETS = [
-  '/',
-  '/index.php',
-  '/offline.html',
-  '/offline-game.html',
-  '/assets/css/style.css',
-  '/assets/js/app.js',
-  '/assets/js/offline-db.js',
-  '/bg-music.mp3'
+  './',
+  './index.php',
+  './offline.html',
+  './assets/css/style.css',  // CRITICAL
+  './assets/js/app.js',
+  './assets/js/offline-db.js' // If this fails, others must still load
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open('v1').then((cache) => {
-      // CRITICAL FIX: Only include files that ACTUALLY exist in your folder.
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(CACHE_NAME).then((cache) => {
+      // FAIL-SAFE LOGIC:
+      // Try to cache each file individually. If one fails, log it but KEEP GOING.
+      return Promise.all(
+        STATIC_ASSETS.map(url => {
+          return cache.add(url).catch(err => {
+            console.warn(`[SW] Failed to cache ${url}, but continuing...`, err);
+          });
+        })
+      );
     })
   );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => {
+        if (![CACHE_NAME, DYNAMIC_CACHE].includes(key)) return caches.delete(key);
+      })
+    ))
+  );
+  return self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // 1. Navigation Requests (HTML Pages)
+  const url = event.request.url;
+
+  // 1. Navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        // Network Failed. Check Cache.
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
+      fetch(event.request)
+        .then((response) => {
+          // Cache Student Pages Only
+          // Check if response is valid before caching
+          if (response && response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
+            const clone = response.clone();
+            caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
           }
-          return caches.match('/offline.html');
-        });
-      })
+          return response;
+        })
+        .catch(() => {
+          // Offline Fallback
+          // Try to match the request in cache first, then fallback to offline.html
+          return caches.match(event.request)
+            .then(resp => resp || caches.match('./offline.html'));
+        })
     );
     return;
   }
 
-  // 1.5 Special Case: Dashboard (Stale-while-revalidate)
-  // We want to show the cached dashboard immediately for speed/offline,
-  // but update it in the background if network is available.
-  const url = new URL(event.request.url);
-  if (url.pathname.includes('views/student/dashboard.php')) {
-    event.respondWith(
-      caches.open('v1').then(cache => {
-        return cache.match(event.request).then(cachedResponse => {
-          const fetchPromise = fetch(event.request).then(networkResponse => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-          // Return cached response if available, otherwise wait for network
-          return cachedResponse || fetchPromise;
-        });
-      })
-    );
-    return;
-  }
-
-  // 2. Other Requests (Images, CSS, JS)
+  // 2. Assets (CSS/JS) - Cache First
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.match(event.request).then((cached) => {
+      return cached || fetch(event.request).then(resp => {
+        return resp;
+      }).catch(() => {
+        // Return nothing if offline and missing - browser handles 404/failed request
+        return new Response('', { status: 408, statusText: 'Request timed out' });
+      });
     })
   );
-});
-
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-new-reports') {
-    event.waitUntil(
-      getAllReports().then((reports) => {
-        const syncPromises = reports.map((reportWrapper) => {
-          const { id, data } = reportWrapper;
-          const formData = new FormData();
-          for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-              formData.append(key, data[key]);
-            }
-          }
-          return fetch('views/student/report_new.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include' // IMPORTANT: Send cookies/session
-          })
-            .then((response) => {
-              if (response.ok) {
-                return deleteReport(id);
-              } else {
-                return response.text().then(text => {
-                  throw new Error(`Server rejected: ${response.status} ${text}`);
-                });
-              }
-            })
-            .catch((err) => {
-              console.error('Failed to sync report:', id, err);
-            });
-        });
-
-        return Promise.all(syncPromises).then(() => {
-          self.registration.showNotification("Offline Report Sent Successfully!");
-        });
-      })
-    );
-  }
 });
