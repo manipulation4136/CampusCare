@@ -51,14 +51,14 @@ switch ($path) {
 ?>
 
 <script>
-// Fail-Safe Offline Redirect
-if (!navigator.onLine) {
-    const role = localStorage.getItem('userRole');
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-    
-    if (isLoggedIn === 'true' && role === 'student') {
-        // Force Redirect
-        window.location.href = 'views/student/dashboard.php';
-    }
-}
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!navigator.onLine) {
+            var role = localStorage.getItem('userRole');
+            var isLoggedIn = localStorage.getItem('isLoggedIn');
+            
+            if (isLoggedIn === 'true' && role === 'student') {
+                window.location.href = 'views/student/dashboard.php';
+            }
+        }
+    });
 </script>
