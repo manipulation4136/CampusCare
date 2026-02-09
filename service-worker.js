@@ -1,169 +1,159 @@
-importScripts('./assets/js/offline-db.js');
+const CACHE_NAME = 'static-v45'; // Final Version Bump
+const DYNAMIC_CACHE = 'dynamic-v45';
 
-const CACHE_NAME = 'campuscare-v4'; // Increment version
-const OFFLINE_URL = './offline.html';
-
+// Removed offline-db.js from here because we are embedding it
 const STATIC_ASSETS = [
   './',
   './index.php',
-  OFFLINE_URL, // Critical
-  './offline-game.html',
-  './manifest.json',
+  './offline.html',
   './assets/css/style.css',
-  './assets/js/app.js',
-  './assets/js/offline-db.js',
-  './bg-music.mp3'
+  './assets/js/app.js'
 ];
 
-// --- 1. INSTALL: Cache Static Assets (Strict) ---
+// 1. INSTALL (Fail-Safe)
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing Service Worker...', new Date().toISOString());
   self.skipWaiting();
-
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      console.log(`[SW] Opened cache: ${CACHE_NAME}`);
-
-      // 1. Force Cache 'offline.html' FIRST. If this fails, abort install.
-      try {
-        await cache.add(OFFLINE_URL);
-        console.log(`[SW] CRITICAL: ${OFFLINE_URL} cached successfully.`);
-      } catch (err) {
-        console.error(`[SW] CRITICAL FAILURE: Could not cache ${OFFLINE_URL}. Aborting.`, err);
-        throw err; // This stops the SW from installing.
-      }
-
-      // 2. Cache other assets (Best Effort)
-      const otherAssets = STATIC_ASSETS.filter(url => url !== OFFLINE_URL);
-      for (const asset of otherAssets) {
-        try {
-          const response = await fetch(asset);
-          if (response.ok) {
-            await cache.put(asset, response);
-            console.log(`[SW] Cached: ${asset}`);
-          } else {
-            console.warn(`[SW] Failed to fetch ${asset}: ${response.status}`);
-          }
-        } catch (error) {
-          console.warn(`[SW] Failed to cache ${asset}`, error);
-        }
-      }
-    })
-  );
-});
-
-// --- 2. ACTIVATE: Clean Old Caches ---
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating...');
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.open(CACHE_NAME).then((cache) => {
+      // FAIL-SAFE LOGIC:
+      // Try to cache each file individually. If one fails, log it but KEEP GOING.
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('[SW] Deleting old cache:', cache);
-            return caches.delete(cache);
-          }
+        STATIC_ASSETS.map(url => {
+          return cache.add(url).catch(err => console.warn('Failed to cache:', url));
         })
       );
-    }).then(() => {
-      console.log('[SW] Claiming clients');
-      return self.clients.claim();
     })
   );
 });
 
-// --- 3. FETCH: Robust Strategies ---
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+// 2. ACTIVATE
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => {
+        if (![CACHE_NAME, DYNAMIC_CACHE].includes(key)) return caches.delete(key);
+      })
+    ))
+  );
+  return self.clients.claim();
+});
 
-  // STRATEGY A: HTML / Navigation -> Network First, Fallback to Cache, Fallback to Offline Page
+// 3. FETCH
+self.addEventListener('fetch', (event) => {
+  const url = event.request.url;
+
+  // A. Navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .then((networkResponse) => {
-          // Check if valid reference
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
+        .then((response) => {
+          // Cache Student Pages Only
+          if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
+            const clone = response.clone();
+            caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
           }
-          // Clone & Update Cache
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-          return networkResponse;
+          return response;
         })
-        .catch((err) => {
-          console.log(`[SW] Network failed for ${url.pathname}. Checking cache...`);
-
-          return caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // CRITICAL FALLBACK
-            console.log('[SW] Page not in cache. Serving offline.html...');
-            return caches.match(OFFLINE_URL).then(offlineResp => {
-              if (offlineResp) return offlineResp;
-
-              // Last Resort (Should not happen if install succeeded)
-              console.error('[SW] OUCH! offline.html is missing from cache!');
-              return new Response("You are offline and the offline page is missing.", {
-                status: 503,
-                headers: { 'Content-Type': 'text/plain' }
-              });
-            });
-          });
+        .catch(() => {
+          // Offline Fallback
+          return caches.match(event.request)
+            .then(resp => resp || caches.match('./offline.html'));
         })
     );
     return;
   }
 
-  // STRATEGY B: Static Assets -> Stale-While-Revalidate
-  const isStatic = /\.(css|js|png|jpg|jpeg|svg|json|mp3|woff|woff2)$/i.test(url.pathname);
-  if (isStatic) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then((cache) => {
-        return cache.match(event.request).then((cachedResponse) => {
-          const fetchPromise = fetch(event.request).then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put(event.request, networkResponse.clone());
-            }
-            return networkResponse;
-          }).catch(() => { /* mute errors for bg updates */ });
-
-          return cachedResponse || fetchPromise;
-        });
-      })
-    );
-    return;
-  }
+  // B. Assets (CSS/JS) - Cache First
+  event.respondWith(
+    caches.match(event.request).then(cached => {
+      return cached || fetch(event.request).catch(() => {
+        // Optional: Return a placeholder if missing
+      });
+    })
+  );
 });
 
-// --- 4. BACKGROUND SYNC ---
+// 4. SYNC (Using the embedded functions)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-new-reports') {
     event.waitUntil(
-      getAllReports().then((reports) => {
-        const syncPromises = reports.map((reportWrapper) => {
-          const { id, data } = reportWrapper;
+      getAllReports().then((reports) => { // Now this function is guaranteed to exist
+        const syncPromises = reports.map((report) => {
           const formData = new FormData();
-          for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-              formData.append(key, data[key]);
-            }
+          for (const key in report.data) {
+            formData.append(key, report.data[key]);
           }
+
           return fetch('./views/student/report_new.php', {
             method: 'POST',
             body: formData,
             credentials: 'include'
-          })
-            .then((response) => {
-              if (response.ok) {
-                return deleteReport(id);
-              }
-            });
+          }).then(res => {
+            if (res.ok) return deleteReport(report.id);
+          });
         });
         return Promise.all(syncPromises);
       })
     );
   }
 });
+
+// --- EMBEDDED INDEXED-DB LOGIC (Merged from offline-db.js) ---
+const DB_NAME = 'campuscare_db';
+const DB_VERSION = 1;
+const STORE_NAME = 'offline_reports';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { autoIncrement: true });
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.errorCode);
+  });
+}
+
+function saveReportLocally(data) {
+  return openDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_NAME], 'readwrite');
+      const req = tx.objectStore(STORE_NAME).add(data);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e.target.error);
+    });
+  });
+}
+
+function getAllReports() {
+  return openDB().then(db => {
+    return new Promise((resolve) => {
+      const tx = db.transaction([STORE_NAME], 'readonly');
+      // Check if store exists before accessing
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        resolve([]);
+        return;
+      }
+      const req = tx.objectStore(STORE_NAME).openCursor();
+      const reports = [];
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) { reports.push({ id: cursor.key, data: cursor.value }); cursor.continue(); }
+        else resolve(reports);
+      };
+      req.onerror = () => resolve([]); // Fail gracefully
+    });
+  });
+}
+
+function deleteReport(id) {
+  return openDB().then(db => {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([STORE_NAME], 'readwrite');
+      const req = tx.objectStore(STORE_NAME).delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = (e) => reject(e.target.error);
+    });
+  });
+}
