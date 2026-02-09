@@ -1,6 +1,23 @@
 <?php
 // index.php
 require_once __DIR__ . '/config/init.php';
+?>
+<script>
+// CRITICAL: IMMEDIATE OFFLINE REDIRECT
+// This runs BEFORE the login page HTML is rendered.
+if (!navigator.onLine) {
+    const role = localStorage.getItem('userRole');
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    
+    // If student is logged in, STOP everything and jump to dashboard
+    if (isLoggedIn === 'true' && role === 'student') {
+        window.stop(); // Stop loading the login form
+        window.location.replace('views/student/dashboard.php');
+    }
+}
+</script>
+<?php
+// ... The rest of the Router Logic ...
 
 $request = $_SERVER['REQUEST_URI'];
 $base = BASE_URL;
@@ -18,7 +35,7 @@ $path = trim($path, '/');
 switch ($path) {
     case '':
     case 'login':
-    case 'index.php': // Fix: Handle explicit index.php redirect
+    case 'index.php': 
         require __DIR__ . '/views/login.php';
         break;
         
@@ -26,7 +43,7 @@ switch ($path) {
         require __DIR__ . '/views/register.php';
         break;
         
-    case 'logout': // Fix: Handle logout route specifically
+    case 'logout': 
         require __DIR__ . '/includes/logout.php';
         break;
         
@@ -49,12 +66,3 @@ switch ($path) {
         break;
 }
 ?>
-
-<script>
-// Auto-Redirect Trick for Offline PWA Startup
-if (!navigator.onLine && localStorage.getItem('isLoggedIn') === 'true') {
-    const role = localStorage.getItem('userRole');
-    const baseUrl = 'views/' + role + '/dashboard.php'; // Adjust based on your folder
-    window.location.href = baseUrl;
-}
-</script>
