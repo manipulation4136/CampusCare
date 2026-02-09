@@ -33,13 +33,10 @@ function handle_login($conn) {
                     ];
                     // redirect_by_role();
                     // INJECTED: Offline Persistence Logic
-                    $role = $u['role'];
-                    $redirectUrl = BASE_URL . ($role === 'admin' ? 'views/admin/dashboard.php' : ($role === 'faculty' ? 'views/faculty/dashboard.php' : 'views/student/dashboard.php'));
-                    
                     echo '<script>
                         localStorage.setItem("isLoggedIn", "true");
-                        localStorage.setItem("userRole", "' . $role . '");
-                        window.location.href = "' . BASE_URL . 'views/' . $role . '/dashboard.php";
+                        localStorage.setItem("userRole", "' . $u['role'] . '");
+                        window.location.href = "' . BASE_URL . 'views/' . $u['role'] . '/dashboard.php";
                     </script>';
                     exit;
                 } else {
