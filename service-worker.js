@@ -37,11 +37,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1.5 Special Case: Dashboard (Stale-while-revalidate)
-  // We want to show the cached dashboard immediately for speed/offline,
-  // but update it in the background if network is available.
+  // 1.5 Special Case: Dashboard & Student Pages (Stale-while-revalidate)
+  // We want to show these pages immediately for speed/offline,
+  // but update them in the background if network is available.
   const url = new URL(event.request.url);
-  if (url.pathname.includes('views/student/dashboard.php')) {
+  const isStudentPage = url.pathname.includes('views/student/dashboard.php') ||
+    url.pathname.includes('views/student/history.php') ||
+    url.pathname.includes('views/student/report_new.php');
+
+  if (isStudentPage) {
     event.respondWith(
       caches.open('v1').then(cache => {
         return cache.match(event.request).then(cachedResponse => {
