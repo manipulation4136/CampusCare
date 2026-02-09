@@ -42,13 +42,23 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // --- CRITICAL FIX: BYPASS ADMIN & FACULTY ---
-  // If the URL is for Admin or Faculty, let the browser handle it normally.
-  // Do NOT let Service Worker touch these requests.
+  // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Offline Page) ---
   if (url.includes('/views/admin/') || url.includes('/views/faculty/')) {
-    return; // Exit immediately
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Just return the network response. DO NOT CACHE IT.
+          return response;
+        })
+        .catch(() => {
+          // If Offline, show the Radar Page (No more white screen!)
+          return caches.match('./offline.html');
+        })
+    );
+    return; // Stop here for admins
   }
 
+  // --- STRATEGY 2: STUDENT (Network First -> Cache -> Offline Page) ---
   // A. Navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -62,7 +72,6 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Offline Fallback
           return caches.match(event.request)
             .then(resp => resp || caches.match('./offline.html'));
         })
