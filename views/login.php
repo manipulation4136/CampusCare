@@ -22,9 +22,22 @@ $error = handle_login($conn);
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('<?= BASE_URL ?>service-worker.js')
-          .then(reg => console.log('SW Registered!', reg.scope))
-          .catch(err => console.log('SW Failed:', err));
+        const role = localStorage.getItem('userRole');
+        
+        if (role === 'student') {
+          // Only register for students
+          navigator.serviceWorker.register('<?= BASE_URL ?>service-worker.js')
+            .then(reg => console.log('SW Registered for Student!', reg.scope))
+            .catch(err => console.log('SW Failed:', err));
+        } else {
+          // For Admin/Faculty: Unregister if exists
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.unregister();
+              console.log('SW Unregistered (Not a Student)');
+            }
+          });
+        }
       });
     }
   </script>
