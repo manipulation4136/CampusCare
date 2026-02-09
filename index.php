@@ -51,8 +51,14 @@ switch ($path) {
 ?>
 
 <script>
-// Auto-Redirect Trick for Offline PWA Startup
-if (!navigator.onLine && localStorage.getItem('isLoggedIn') === 'true' && localStorage.getItem('userRole') === 'student') {
-    window.location.href = 'views/student/dashboard.php';
+// Check if offline AND logged in as Student
+if (!navigator.onLine) {
+    const role = localStorage.getItem('userRole');
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    
+    if (isLoggedIn === 'true' && role === 'student') {
+        // Force Redirect to Dashboard
+        window.location.href = 'views/student/dashboard.php';
+    }
 }
 </script>
