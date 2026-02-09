@@ -51,8 +51,14 @@ switch ($path) {
 ?>
 
 <script>
-// Auto-Redirect Trick for Offline PWA Startup
-if (!navigator.onLine && localStorage.getItem('isLoggedIn') === 'true' && localStorage.getItem('userRole') === 'student') {
-    window.location.href = 'views/student/dashboard.php';
-}
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!navigator.onLine) {
+            var role = localStorage.getItem('userRole');
+            var isLoggedIn = localStorage.getItem('isLoggedIn');
+            
+            if (isLoggedIn === 'true' && role === 'student') {
+                window.location.href = 'views/student/dashboard.php';
+            }
+        }
+    });
 </script>
