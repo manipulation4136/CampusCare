@@ -1,6 +1,218 @@
-<html>
-  <head></head>
-  <body>
-    <h1>HWLLOE net pooyi</h1>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline | CampusCare</title>
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="img/logo.png">
+
+    <!-- CSS Links -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+
+    <style>
+        /* Specific Styles for Offline Page to Center Content */
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0b1020 0%, #1a2542 100%);
+        }
+
+        .offline-container {
+            max-width: 450px;
+            width: 90%;
+            padding: 40px 20px;
+            background: rgba(19, 26, 43, 0.8);
+            border: 1px solid rgba(110, 168, 254, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+
+        @keyframes popIn {
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .icon-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 25px;
+        }
+
+        .icon-bg {
+            width: 100px;
+            height: 100px;
+            background: rgba(110, 168, 254, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            animation: pulse 2s infinite;
+        }
+
+        i.fa-wifi {
+            font-size: 40px;
+            color: var(--muted);
+            opacity: 0.5;
+        }
+
+        .slash-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 50px;
+            color: var(--bad);
+            /* Red color from system theme */
+            animation: float 3s ease-in-out infinite;
+        }
+
+        h1 {
+            color: var(--text);
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        p {
+            color: var(--muted);
+            font-size: 16px;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .btn-retry {
+            background: var(--accent);
+            color: #071226;
+            font-weight: 700;
+            padding: 12px 30px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 5px 15px rgba(110, 168, 254, 0.4);
+        }
+
+        .btn-retry:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(110, 168, 254, 0.6);
+            background: #8cbaff;
+            /* Lighter accent */
+        }
+
+        .btn-retry:active {
+            transform: translateY(-1px);
+        }
+
+        /* Ambient Glow Effect */
+        .glow-bg {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: var(--accent);
+            opacity: 0.15;
+            filter: blur(80px);
+            border-radius: 50%;
+            z-index: -1;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: glowPulse 5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(110, 168, 254, 0.2);
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(110, 168, 254, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(110, 168, 254, 0);
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translate(-50%, -50%) translateY(0px);
+            }
+
+            50% {
+                transform: translate(-50%, -50%) translateY(-10px);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) translateY(0px);
+            }
+        }
+
+        @keyframes glowPulse {
+            0% {
+                opacity: 0.1;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+
+            100% {
+                opacity: 0.2;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="glow-bg"></div>
+
+    <div class="offline-container">
+        <div class="icon-wrapper">
+            <div class="icon-bg">
+                <i class="fa-solid fa-wifi"></i>
+            </div>
+            <i class="fa-solid fa-slash slash-icon"></i>
+        </div>
+
+        <h1>You are Offline</h1>
+        <p>It seems you've lost internet connection.<br>Check your settings and try again.</p>
+
+        <button class="btn-retry" onclick="window.location.reload()">
+            <i class="fa-solid fa-rotate-right"></i> Retry
+        </button>
+    </div>
+
+    <script>
+        // Auto-reload when connection is restored
+        window.addEventListener('online', () => {
+            window.location.reload();
+        });
+    </script>
+
+</body>
+
 </html>
