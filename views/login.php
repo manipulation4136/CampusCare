@@ -7,21 +7,7 @@ if (isset($_SESSION['user'])) {
     redirect_by_role();
 }
 
-$error = '';
-$loginResult = handle_login($conn);
-
-if (is_array($loginResult) && isset($loginResult['success']) && $loginResult['success']) {
-    $user = $loginResult['user'];
-    // INJECTED: Offline Persistence Logic & Redirect
-    echo '<script>
-            localStorage.setItem("isLoggedIn", "true");
-            localStorage.setItem("userRole", "' . $user['role'] . '");
-            window.location.href = "' . BASE_URL . 'views/' . $user['role'] . '/dashboard.php";
-          </script>';
-    exit;
-} elseif (is_string($loginResult)) {
-    $error = $loginResult;
-}
+$error = handle_login($conn);
 ?>
 <!doctype html>
 <html lang="en">
