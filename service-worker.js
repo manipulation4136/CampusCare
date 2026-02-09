@@ -38,9 +38,16 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. FETCH
+// 3. FETCH: Smart Strategy
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
+
+  // --- CRITICAL FIX: BYPASS ADMIN & FACULTY ---
+  // If the URL is for Admin or Faculty, let the browser handle it normally.
+  // Do NOT let Service Worker touch these requests.
+  if (url.includes('/views/admin/') || url.includes('/views/faculty/')) {
+    return; // Exit immediately
+  }
 
   // A. Navigation (HTML)
   if (event.request.mode === 'navigate') {
@@ -67,7 +74,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then(cached => {
       return cached || fetch(event.request).catch(() => {
-        // Optional: Return a placeholder if missing
+        // Return nothing if missing
       });
     })
   );
