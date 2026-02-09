@@ -20,50 +20,36 @@ self.addEventListener('install', (event) => {
   );
 });
 
-const DYNAMIC_CACHE = 'dynamic-v1';
-
 self.addEventListener('fetch', (event) => {
   // 1. Navigation Requests (HTML Pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((networkResponse) => {
-          // Check if valid response
-          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-            return networkResponse;
+      fetch(event.request).catch(() => {
+        // Network Failed. Check Cache.
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
           }
-
-          // Clone and Cache Dynamic Pages
-          const responseToCache = networkResponse.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
-          return networkResponse;
-        })
-        .catch(() => {
-          // Network Failed. Check Cache (Static OR Dynamic).
-          return caches.match(event.request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            return caches.match('/offline.html');
-          });
-        })
+          return caches.match('/offline.html');
+        });
+      })
     );
     return;
   }
 
-  // 2. Dashboard Specific Strategy (Stale-while-revalidate)
+  // 1.5 Special Case: Dashboard (Stale-while-revalidate)
+  // We want to show the cached dashboard immediately for speed/offline,
+  // but update it in the background if network is available.
   const url = new URL(event.request.url);
   if (url.pathname.includes('views/student/dashboard.php')) {
     event.respondWith(
-      caches.open(DYNAMIC_CACHE).then(cache => {
+      caches.open('v1').then(cache => {
         return cache.match(event.request).then(cachedResponse => {
           const fetchPromise = fetch(event.request).then(networkResponse => {
             cache.put(event.request, networkResponse.clone());
             return networkResponse;
           });
+          // Return cached response if available, otherwise wait for network
           return cachedResponse || fetchPromise;
         });
       })
@@ -71,15 +57,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Other Requests (Images, CSS, JS)
+  // 2. Other Requests (Images, CSS, JS)
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // Return cached response OR fetch from network
-      return response || fetch(event.request).then(networkResponse => {
-        // Optional: Cache new static assets dynamically too?
-        // For now, let's stick to just returning network for non-static
-        return networkResponse;
-      });
+      return response || fetch(event.request);
     })
   );
 });
