@@ -51,13 +51,13 @@ switch ($path) {
 ?>
 
 <script>
-// Check if offline AND logged in as Student
+// Fail-Safe Offline Redirect
 if (!navigator.onLine) {
     const role = localStorage.getItem('userRole');
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     
     if (isLoggedIn === 'true' && role === 'student') {
-        // Force Redirect to Dashboard
+        // Force Redirect
         window.location.href = 'views/student/dashboard.php';
     }
 }
