@@ -1,26 +1,44 @@
-importScripts('/assets/js/offline-db.js');
-
 const STATIC_ASSETS = [
   '/',
   '/index.php',
   '/offline.html',
-  '/offline-game.html',
   '/assets/css/style.css',
-  '/assets/js/app.js',
-  '/assets/js/offline-db.js',
-  '/bg-music.mp3'
+  '/assets/js/app.js'
 ];
+
+const STATIC_CACHE = 'static-v1';
+const DYNAMIC_CACHE = 'dynamic-v1';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open('v1').then((cache) => {
-      // CRITICAL FIX: Only include files that ACTUALLY exist in your folder.
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(STATIC_CACHE).then((cache) => {
+      // Robust Caching: Handle each file individually
+      // If one fails (e.g., missing file), others still get cached.
+      const cachePromises = STATIC_ASSETS.map((asset) => {
+        return cache.add(asset).catch((err) => {
+          console.error(`[SW] Failed to cache ${asset}:`, err);
+        });
+      });
+      return Promise.all(cachePromises);
     })
   );
+  self.skipWaiting(); // Activate immediately
 });
 
-const DYNAMIC_CACHE = 'dynamic-v1';
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== STATIC_CACHE && key !== DYNAMIC_CACHE) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
 
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
@@ -69,7 +87,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((response) => {
       // Return cached response OR fetch from network
       return response || fetch(event.request).then((networkResponse) => {
-        // Check if valid response logic could be added here, but usually for assets it's less critical unless we cache errors
+        // Check if valid response logic could be added here
         if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
           return networkResponse;
         }
@@ -90,43 +108,4 @@ self.addEventListener('fetch', (event) => {
       });
     })
   );
-});
-
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-new-reports') {
-    event.waitUntil(
-      getAllReports().then((reports) => {
-        const syncPromises = reports.map((reportWrapper) => {
-          const { id, data } = reportWrapper;
-          const formData = new FormData();
-          for (const key in data) {
-            if (Object.prototype.hasOwnProperty.call(data, key)) {
-              formData.append(key, data[key]);
-            }
-          }
-          return fetch('views/student/report_new.php', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include' // IMPORTANT: Send cookies/session
-          })
-            .then((response) => {
-              if (response.ok) {
-                return deleteReport(id);
-              } else {
-                return response.text().then(text => {
-                  throw new Error(`Server rejected: ${response.status} ${text}`);
-                });
-              }
-            })
-            .catch((err) => {
-              console.error('Failed to sync report:', id, err);
-            });
-        });
-
-        return Promise.all(syncPromises).then(() => {
-          self.registration.showNotification("Offline Report Sent Successfully!");
-        });
-      })
-    );
-  }
 });
