@@ -32,13 +32,8 @@ function handle_login($conn) {
                         'role'=>$u['role']
                     ];
                     // redirect_by_role();
-                    // INJECTED: Offline Persistence Logic
-                    echo '<script>
-                        localStorage.setItem("isLoggedIn", "true");
-                        localStorage.setItem("userRole", "' . $u['role'] . '");
-                        window.location.href = "' . BASE_URL . 'views/' . $u['role'] . '/dashboard.php";
-                    </script>';
-                    exit;
+                    // Refactored: Return user data to login.php for handling
+                    return ['success' => true, 'user' => $u];
                 } else {
                     $error = 'Invalid credentials';
                 }
