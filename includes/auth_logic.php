@@ -39,6 +39,8 @@ function handle_login($conn) {
                     echo '<script>
                         localStorage.setItem("isLoggedIn", "true");
                         localStorage.setItem("userRole", "' . $role . '");
+                        localStorage.setItem("userId", "' . $u['id'] . '");
+                        localStorage.setItem("userName", "' . $u['name'] . '");
                         window.location.href = "' . BASE_URL . 'views/' . $role . '/dashboard.php";
                     </script>';
                     exit;
