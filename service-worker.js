@@ -23,7 +23,9 @@ self.addEventListener('install', (event) => {
 const DYNAMIC_CACHE = 'dynamic-v1';
 
 self.addEventListener('fetch', (event) => {
-  // 1. Navigation Requests (HTML Pages)
+  const url = event.request.url;
+
+  // 1. Navigation Requests (HTML Pages) - Network First
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
@@ -33,20 +35,28 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           }
 
-          // Clone and Cache Dynamic Pages
-          const responseToCache = networkResponse.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          // STRICT FILTER: Only cache if it is a Student Page or a Common Asset
+          // Exclude Admin and Faculty paths explicitly
+          if (
+            (url.includes('/views/student/') || url.includes('/assets/') || url.includes('index.php')) &&
+            !url.includes('/views/admin/') &&
+            !url.includes('/views/faculty/')
+          ) {
+            const responseToCache = networkResponse.clone();
+            caches.open(DYNAMIC_CACHE).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
 
           return networkResponse;
         })
         .catch(() => {
-          // Network Failed. Check Cache (Static OR Dynamic).
+          // Network Failed. Check Cache.
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
               return cachedResponse;
             }
+            // Fallback for Admin/Faculty pages (not cached) -> Offline Page
             return caches.match('/offline.html');
           });
         })
@@ -54,30 +64,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Dashboard Specific Strategy (Stale-while-revalidate)
-  const url = new URL(event.request.url);
-  if (url.pathname.includes('views/student/dashboard.php')) {
-    event.respondWith(
-      caches.open(DYNAMIC_CACHE).then(cache => {
-        return cache.match(event.request).then(cachedResponse => {
-          const fetchPromise = fetch(event.request).then(networkResponse => {
-            cache.put(event.request, networkResponse.clone());
-            return networkResponse;
-          });
-          return cachedResponse || fetchPromise;
-        });
-      })
-    );
-    return;
-  }
-
-  // 3. Other Requests (Images, CSS, JS)
+  // 2. Static Assets & Other Requests - Cache First (falling back to Network)
   event.respondWith(
     caches.match(event.request).then((response) => {
       // Return cached response OR fetch from network
-      return response || fetch(event.request).then(networkResponse => {
-        // Optional: Cache new static assets dynamically too?
-        // For now, let's stick to just returning network for non-static
+      return response || fetch(event.request).then((networkResponse) => {
+        // Check if valid response logic could be added here, but usually for assets it's less critical unless we cache errors
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
+
+        // Apply same filter for dynamic assets (if any need caching that aren't pre-cached)
+        if (
+          (url.includes('/views/student/') || url.includes('/assets/') || url.includes('index.php')) &&
+          !url.includes('/views/admin/') &&
+          !url.includes('/views/faculty/')
+        ) {
+          const responseToCache = networkResponse.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+
         return networkResponse;
       });
     })
