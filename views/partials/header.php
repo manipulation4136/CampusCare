@@ -196,9 +196,9 @@ window.addEventListener('click', function(event) {
               
               <div class="dropdown-divider"></div>
 
-              <a href="<?= BASE_URL ?>logout" class="dropdown-item" style="color: #ff6b6b;">
-                  🚪 Exit
-              </a>
+              <a href="<?= BASE_URL ?>includes/logout.php" class="dropdown-item" style="color: #ff6b6b;">
+    🚪 Exit
+</a>
           </div>
       </div>
     <?php endif; ?>
