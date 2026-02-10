@@ -1,58 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - CampusCare</title>
+    
     <link rel="stylesheet" href="/assets/css/style.css">
+
+    <style>
+        /* This ensures hiding works even if style.css fails to load */
+        .hidden { display: none !important; }
+        
+        /* Centering Fix just in case login-wrapper is missing */
+        body, html { height: 100%; margin: 0; }
+        .offline-fallback-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+    </style>
 </head>
 
-<body class="login-wrapper">
+<body class="login-wrapper offline-fallback-wrapper">
 
     <div class="ambient-glow"></div>
 
-    <div class="glass-card" style="text-align: center;">
-
-        <div class="hero-icon" style="margin: 0 auto 20px auto; width: 80px; height: 80px; font-size: 40px;">
+    <div class="glass-card" style="text-align: center; max-width: 400px; width: 100%;">
+        
+        <div class="hero-icon" style="margin: 0 auto 20px auto; width: 80px; height: 80px; font-size: 40px; display: flex; align-items: center; justify-content: center; background: rgba(110, 168, 254, 0.1); border-radius: 50%; color: #6ea8fe;">
             📡
         </div>
 
         <div class="login-header">
-            <h1>Connection Lost</h1>
-            <p>You seem to be offline.</p>
+            <h1 style="color: white; margin-bottom: 8px;">Connection Lost</h1>
+            <p style="color: #8fa0c9;">You seem to be offline.</p>
         </div>
 
         <div id="admin-msg" class="hidden">
-            <div class="alert error" style="margin-bottom: 20px;">
+            <div class="alert error" style="margin-bottom: 20px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.3); color: #ff9e93; padding: 12px; border-radius: 10px;">
                 Admin access requires an internet connection.
             </div>
-            <button onclick="window.location.reload()" class="btn" style="width: 100%;">
+            <button onclick="window.location.reload()" class="btn" style="width: 100%; background: var(--accent, #6ea8fe); border: none; padding: 12px; border-radius: 10px; color: #071226; font-weight: 600; cursor: pointer;">
                 🔄 Try Reconnecting
             </button>
         </div>
 
         <div id="student-msg" class="hidden">
-            <div class="alert success"
-                style="margin-bottom: 20px; background: rgba(39, 174, 96, 0.1); border-color: rgba(39, 174, 96, 0.2);">
+            <div class="alert success" style="margin-bottom: 20px; background: rgba(39, 174, 96, 0.15); border: 1px solid rgba(39, 174, 96, 0.3); color: #6ef5a3; padding: 12px; border-radius: 10px;">
                 Don't worry! You can still report damages.
             </div>
-
+            
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <a href="/views/student/report_new.php" class="btn">
+                <a href="/views/student/report_new.php" class="btn" style="text-decoration: none; display: block; background: var(--accent, #6ea8fe); color: #071226; padding: 12px; border-radius: 10px; font-weight: 600;">
                     📝 Report Damage
                 </a>
-                <a href="/views/student/dashboard.php" class="btn outline"
-                    style="background: transparent; border: 1px solid var(--accent); color: var(--text);">
+                <a href="/views/student/dashboard.php" class="btn outline" style="text-decoration: none; display: block; background: transparent; border: 1px solid #6ea8fe; color: white; padding: 12px; border-radius: 10px; font-weight: 600;">
                     🏠 Go to Dashboard
                 </a>
             </div>
         </div>
 
         <div id="default-msg" class="hidden">
-            <p style="color: var(--muted); margin-bottom: 20px;">Please check your internet connection and try again.
-            </p>
-            <button onclick="window.location.reload()" class="btn" style="width: 100%;">
+            <p style="color: #8fa0c9; margin-bottom: 20px;">Please check your internet connection.</p>
+            <button onclick="window.location.reload()" class="btn" style="width: 100%; background: var(--accent, #6ea8fe); border: none; padding: 12px; border-radius: 10px; color: #071226; font-weight: 600; cursor: pointer;">
                 🔄 Reload
             </button>
         </div>
@@ -60,18 +73,24 @@
     </div>
 
     <script>
-        // Check Role and Show Relevant Message
-        const role = localStorage.getItem('userRole');
+        // Logic to toggle visibility
+        document.addEventListener("DOMContentLoaded", function() {
+            const role = localStorage.getItem('userRole');
+            
+            // Hide everything first (Safety step)
+            document.getElementById('admin-msg').classList.add('hidden');
+            document.getElementById('student-msg').classList.add('hidden');
+            document.getElementById('default-msg').classList.add('hidden');
 
-        // Simple logic to show the right div
-        if (role === 'admin' || role === 'faculty') {
-            document.getElementById('admin-msg').classList.remove('hidden');
-        } else if (role === 'student') {
-            document.getElementById('student-msg').classList.remove('hidden');
-        } else {
-            document.getElementById('default-msg').classList.remove('hidden');
-        }
+            // Show the correct one
+            if (role === 'admin' || role === 'faculty') {
+                document.getElementById('admin-msg').classList.remove('hidden');
+            } else if (role === 'student') {
+                document.getElementById('student-msg').classList.remove('hidden');
+            } else {
+                document.getElementById('default-msg').classList.remove('hidden');
+            }
+        });
     </script>
 </body>
-
 </html>
