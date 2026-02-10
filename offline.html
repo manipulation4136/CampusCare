@@ -5,51 +5,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - CampusCare</title>
-    <link rel="stylesheet" href="./assets/css/style.css">
-    <style>
-        body {
-            text-align: center;
-            padding: 50px;
-            font-family: sans-serif;
-            color: white;
-            background: #1a1a2e;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            margin-top: 20px;
-            background: #e94560;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 
-<body>
-    <h1>You are Offline 📡</h1>
+<body class="offline-page">
+    <div class="offline-container">
+        <div class="offline-content">
+            <div class="icon-box">
+                <h1>📡</h1>
+            </div>
+            <h2>You are Offline</h2>
 
-    <div id="admin-msg" class="hidden">
-        <p>Admin/Faculty access requires an internet connection.</p>
-        <p>Please connect to Wi-Fi or Mobile Data.</p>
-        <button onclick="window.location.reload()" class="btn">Try Reconnecting</button>
-    </div>
+            <div id="admin-msg" class="hidden">
+                <p class="offline-text">Admin access requires an active internet connection.</p>
+                <button onclick="window.location.reload()" class="btn btn-primary">🔄 Try Reconnecting</button>
+            </div>
 
-    <div id="student-msg" class="hidden">
-        <p>You can still report damages offline!</p>
-        <a href="./views/student/report_new.php" class="btn">Report Damage</a>
-        <br><br>
-        <a href="./views/student/dashboard.php" class="btn">Go to Dashboard</a>
-    </div>
+            <div id="student-msg" class="hidden">
+                <p class="offline-text">Don't worry! You can still report damages.</p>
+                <div class="button-group">
+                    <a href="/views/student/report_new.php" class="btn btn-success">📝 Report Damage</a>
+                    <a href="/views/student/dashboard.php" class="btn btn-secondary">🏠 Dashboard</a>
+                </div>
+            </div>
 
-    <div id="default-msg" class="hidden">
-        <p>Please check your internet connection.</p>
-        <button onclick="window.location.reload()" class="btn">Reload</button>
+            <div id="default-msg" class="hidden">
+                <p class="offline-text">Please check your internet connection.</p>
+                <button onclick="window.location.reload()" class="btn btn-primary">🔄 Reload</button>
+            </div>
+        </div>
     </div>
 
     <script>
