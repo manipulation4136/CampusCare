@@ -8,38 +8,62 @@
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 
-<body class="offline-page">
-    <div class="offline-container">
-        <div class="offline-content">
-            <div class="icon-box">
-                <h1>📡</h1>
-            </div>
-            <h2>You are Offline</h2>
+<body class="login-wrapper">
 
-            <div id="admin-msg" class="hidden">
-                <p class="offline-text">Admin access requires an active internet connection.</p>
-                <button onclick="window.location.reload()" class="btn btn-primary">🔄 Try Reconnecting</button>
+    <div class="ambient-glow"></div>
+
+    <div class="glass-card" style="text-align: center;">
+
+        <div class="hero-icon" style="margin: 0 auto 20px auto; width: 80px; height: 80px; font-size: 40px;">
+            📡
+        </div>
+
+        <div class="login-header">
+            <h1>Connection Lost</h1>
+            <p>You seem to be offline.</p>
+        </div>
+
+        <div id="admin-msg" class="hidden">
+            <div class="alert error" style="margin-bottom: 20px;">
+                Admin access requires an internet connection.
+            </div>
+            <button onclick="window.location.reload()" class="btn" style="width: 100%;">
+                🔄 Try Reconnecting
+            </button>
+        </div>
+
+        <div id="student-msg" class="hidden">
+            <div class="alert success"
+                style="margin-bottom: 20px; background: rgba(39, 174, 96, 0.1); border-color: rgba(39, 174, 96, 0.2);">
+                Don't worry! You can still report damages.
             </div>
 
-            <div id="student-msg" class="hidden">
-                <p class="offline-text">Don't worry! You can still report damages.</p>
-                <div class="button-group">
-                    <a href="/views/student/report_new.php" class="btn btn-success">📝 Report Damage</a>
-                    <a href="/views/student/dashboard.php" class="btn btn-secondary">🏠 Dashboard</a>
-                </div>
-            </div>
-
-            <div id="default-msg" class="hidden">
-                <p class="offline-text">Please check your internet connection.</p>
-                <button onclick="window.location.reload()" class="btn btn-primary">🔄 Reload</button>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a href="/views/student/report_new.php" class="btn">
+                    📝 Report Damage
+                </a>
+                <a href="/views/student/dashboard.php" class="btn outline"
+                    style="background: transparent; border: 1px solid var(--accent); color: var(--text);">
+                    🏠 Go to Dashboard
+                </a>
             </div>
         </div>
+
+        <div id="default-msg" class="hidden">
+            <p style="color: var(--muted); margin-bottom: 20px;">Please check your internet connection and try again.
+            </p>
+            <button onclick="window.location.reload()" class="btn" style="width: 100%;">
+                🔄 Reload
+            </button>
+        </div>
+
     </div>
 
     <script>
         // Check Role and Show Relevant Message
         const role = localStorage.getItem('userRole');
 
+        // Simple logic to show the right div
         if (role === 'admin' || role === 'faculty') {
             document.getElementById('admin-msg').classList.remove('hidden');
         } else if (role === 'student') {
