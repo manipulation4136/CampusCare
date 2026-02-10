@@ -1,5 +1,5 @@
-const CACHE_NAME = 'static-v46';
-const DYNAMIC_CACHE = 'dynamic-v46';
+const CACHE_NAME = 'static-v47'; // Version Bump
+const DYNAMIC_CACHE = 'dynamic-v47';
 
 // Removed offline-db.js from here because we are embedding it
 const STATIC_ASSETS = [
@@ -38,33 +38,26 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. FETCH: Smart Strategy
+// 3. FETCH: The Logic You Requested
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Offline Page Fallback) ---
+  // --- STRATEGY 1: ADMIN & FACULTY (Default Browser Behavior) ---
+  // If we return nothing here, the Service Worker ignores the request.
+  // The browser will try to fetch it from the network.
+  // If it fails (Offline), the BROWSER will show its own default Offline Page (Dino/Error).
   if (url.includes('/views/admin/') || url.includes('/views/faculty/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // Return network response directly. DO NOT CACHE for security.
-          return response;
-        })
-        .catch(() => {
-          // Network failed? Show Offline Page instead of White Screen.
-          return caches.match('./offline.html');
-        })
-    );
     return;
   }
 
-  // --- STRATEGY 2: STUDENT (Network First -> Cache -> Offline Page) ---
+  // --- STRATEGY 2: STUDENT (Network First -> Cache -> Custom Offline.html) ---
+
   // A. Navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Only cache Student pages
+          // Cache Student Pages Only
           if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
@@ -72,6 +65,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
+          // Only for students: Show the custom "Radar" offline page
           return caches.match(event.request)
             .then(resp => resp || caches.match('./offline.html'));
         })
@@ -82,7 +76,9 @@ self.addEventListener('fetch', (event) => {
   // B. Assets (CSS/JS) - Cache First
   event.respondWith(
     caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).catch(() => { });
+      return cached || fetch(event.request).catch(() => {
+        // Return nothing if missing
+      });
     })
   );
 });
