@@ -435,11 +435,28 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 1. Submit Listener
-    reportForm.addEventListener('submit', function(e) {
-        if (!navigator.onLine) {
-            e.preventDefault();
+    reportForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(reportForm);
+        
+        try {
+            // First, attempt online submission via Fetch
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: formData
+            });
+
+            // If fetch succeeds (server reachable), display the result (likely the same page with success/error)
+            const resultHtml = await response.text();
+            document.open();
+            document.write(resultHtml);
+            document.close();
+
+        } catch (error) {
+            // If Fetch FAILS (Network Error/Offline), use Fallback
+            console.log('Online submission failed, switching to offline save:', error);
             
-            const formData = new FormData(reportForm);
             // Convert FormData to plain object for IndexedDB
             const data = {};
             formData.forEach((value, key) => {
@@ -447,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             saveReportLocally(data).then(() => {
-                // Register Background Sync
+                // Register Background Sync if supported
                 if ('serviceWorker' in navigator && 'SyncManager' in window) {
                     navigator.serviceWorker.ready.then(registration => {
                         return registration.sync.register('sync-new-reports');
@@ -457,17 +474,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Clear form & UI Feedback
                 reportForm.reset();
                 
-                // Show temporary success message
+                // Remove existing alerts if any
+                const existingAlerts = reportForm.parentElement.querySelectorAll('.alert');
+                existingAlerts.forEach(el => el.remove());
+
+                // Show "Saved Offline" message
                 const msg = document.createElement('div');
                 msg.className = 'alert success';
-                msg.innerHTML = '<i class="fa-solid fa-save"></i> Saved offline. Will send automatically.';
+                msg.innerHTML = '<i class="fa-solid fa-save"></i> <strong>Offline Mode:</strong> Report saved securely on your device. It will be sent automatically when back online.';
                 msg.style.marginBottom = '20px';
-                
+                msg.style.backgroundColor = '#f39c12'; // Distinct color for offline save (Orange)
+                msg.style.borderColor = '#e67e22';
+
                 // Insert before form
                 reportForm.parentNode.insertBefore(msg, reportForm);
                 
-                // Remove message after 3 seconds
-                setTimeout(() => msg.remove(), 3000);
+                // Optional: Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
             }).catch(err => {
                 console.error("Failed to save report offline", err);
                 alert("Failed to save report offline. Please try again.");
