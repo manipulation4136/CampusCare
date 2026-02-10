@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - CampusCare</title>
     
-    <link rel="stylesheet" href="/assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
 
     <style>
-        /* This ensures hiding works even if style.css fails to load */
         .hidden { display: none !important; }
-        
-        /* Centering Fix just in case login-wrapper is missing */
         body, html { height: 100%; margin: 0; }
         .offline-fallback-wrapper {
             display: flex;
@@ -54,10 +51,10 @@
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <a href="/views/student/report_new.php" class="btn" style="text-decoration: none; display: block; background: var(--accent, #6ea8fe); color: #071226; padding: 12px; border-radius: 10px; font-weight: 600;">
+                <a href="views/student/report_new.php" class="btn" style="text-decoration: none; display: block; background: var(--accent, #6ea8fe); color: #071226; padding: 12px; border-radius: 10px; font-weight: 600;">
                     📝 Report Damage
                 </a>
-                <a href="/views/student/dashboard.php" class="btn outline" style="text-decoration: none; display: block; background: transparent; border: 1px solid #6ea8fe; color: white; padding: 12px; border-radius: 10px; font-weight: 600;">
+                <a href="views/student/dashboard.php" class="btn outline" style="text-decoration: none; display: block; background: transparent; border: 1px solid #6ea8fe; color: white; padding: 12px; border-radius: 10px; font-weight: 600;">
                     🏠 Go to Dashboard
                 </a>
             </div>
@@ -73,16 +70,13 @@
     </div>
 
     <script>
-        // Logic to toggle visibility
         document.addEventListener("DOMContentLoaded", function() {
             const role = localStorage.getItem('userRole');
             
-            // Hide everything first (Safety step)
             document.getElementById('admin-msg').classList.add('hidden');
             document.getElementById('student-msg').classList.add('hidden');
             document.getElementById('default-msg').classList.add('hidden');
 
-            // Show the correct one
             if (role === 'admin' || role === 'faculty') {
                 document.getElementById('admin-msg').classList.remove('hidden');
             } else if (role === 'student') {
