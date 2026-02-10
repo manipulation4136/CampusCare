@@ -1,5 +1,5 @@
-const CACHE_NAME = 'static-v47'; // Version Bump
-const DYNAMIC_CACHE = 'dynamic-v47';
+const CACHE_NAME = 'static-v48'; // Version Bump
+const DYNAMIC_CACHE = 'dynamic-v48';
 
 // Removed offline-db.js from here because we are embedding it
 const STATIC_ASSETS = [
@@ -10,13 +10,11 @@ const STATIC_ASSETS = [
   './assets/js/app.js'
 ];
 
-// 1. INSTALL (Fail-Safe)
+// 1. INSTALL
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // FAIL-SAFE LOGIC:
-      // Try to cache each file individually. If one fails, log it but KEEP GOING.
       return Promise.all(
         STATIC_ASSETS.map(url => {
           return cache.add(url).catch(err => console.warn('Failed to cache:', url));
@@ -38,26 +36,31 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. FETCH: The Logic You Requested
+// 3. FETCH: The Fix for White Screen Trap
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // --- STRATEGY 1: ADMIN & FACULTY (Default Browser Behavior) ---
-  // If we return nothing here, the Service Worker ignores the request.
-  // The browser will try to fetch it from the network.
-  // If it fails (Offline), the BROWSER will show its own default Offline Page (Dino/Error).
+  // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Redirect to Login) ---
   if (url.includes('/views/admin/') || url.includes('/views/faculty/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          return response; // If online, just return the page
+        })
+        .catch(() => {
+          // CRITICAL FIX: If offline, DON'T show white screen.
+          // Instead, Force Redirect to Login Page (index.php) which is cached.
+          return Response.redirect('./index.php', 302);
+        })
+    );
     return;
   }
 
   // --- STRATEGY 2: STUDENT (Network First -> Cache -> Custom Offline.html) ---
-
-  // A. Navigation (HTML)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Cache Student Pages Only
           if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
@@ -65,7 +68,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          // Only for students: Show the custom "Radar" offline page
+          // Students get the cool Radar page
           return caches.match(event.request)
             .then(resp => resp || caches.match('./offline.html'));
         })
@@ -73,27 +76,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // B. Assets (CSS/JS) - Cache First
+  // B. Assets
   event.respondWith(
     caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).catch(() => {
-        // Return nothing if missing
-      });
+      return cached || fetch(event.request).catch(() => { });
     })
   );
 });
 
-// 4. SYNC (Using the embedded functions)
+// 4. SYNC & DB Logic (Keep your existing DB code below)
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-new-reports') {
     event.waitUntil(
-      getAllReports().then((reports) => { // Now this function is guaranteed to exist
+      getAllReports().then((reports) => {
         const syncPromises = reports.map((report) => {
           const formData = new FormData();
           for (const key in report.data) {
             formData.append(key, report.data[key]);
           }
-
           return fetch('./views/student/report_new.php', {
             method: 'POST',
             body: formData,
@@ -108,7 +108,7 @@ self.addEventListener('sync', (event) => {
   }
 });
 
-// --- EMBEDDED INDEXED-DB LOGIC (Merged from offline-db.js) ---
+// --- EMBEDDED INDEXED-DB LOGIC ---
 const DB_NAME = 'campuscare_db';
 const DB_VERSION = 1;
 const STORE_NAME = 'offline_reports';
@@ -140,11 +140,7 @@ function getAllReports() {
   return openDB().then(db => {
     return new Promise((resolve) => {
       const tx = db.transaction([STORE_NAME], 'readonly');
-      // Check if store exists before accessing
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        resolve([]);
-        return;
-      }
+      if (!db.objectStoreNames.contains(STORE_NAME)) { resolve([]); return; }
       const req = tx.objectStore(STORE_NAME).openCursor();
       const reports = [];
       req.onsuccess = (e) => {
@@ -152,7 +148,7 @@ function getAllReports() {
         if (cursor) { reports.push({ id: cursor.key, data: cursor.value }); cursor.continue(); }
         else resolve(reports);
       };
-      req.onerror = () => resolve([]); // Fail gracefully
+      req.onerror = () => resolve([]);
     });
   });
 }
