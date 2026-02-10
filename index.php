@@ -3,16 +3,21 @@
 require_once __DIR__ . '/config/init.php';
 ?>
 <script>
-// CRITICAL: IMMEDIATE OFFLINE REDIRECT
-// This runs BEFORE the login page HTML is rendered.
+// CRITICAL: IMMEDIATE OFFLINE ROUTER
+// This runs BEFORE any PHP content is rendered from cache.
 if (!navigator.onLine) {
     const role = localStorage.getItem('userRole');
     const isLoggedIn = localStorage.getItem('isLoggedIn');
     
-    // If student is logged in, STOP everything and jump to dashboard
+    // CASE 1: Student -> Go to Dashboard
     if (isLoggedIn === 'true' && role === 'student') {
-        window.stop(); // Stop loading the login form
+        window.stop(); // Stop rendering index.php
         window.location.replace('views/student/dashboard.php');
+    } 
+    // CASE 2: Admin / Faculty / Not Logged In -> Go to Offline Page
+    else {
+        window.stop(); // Stop rendering index.php (Prevents White Screen)
+        window.location.replace('offline.html');
     }
 }
 </script>
