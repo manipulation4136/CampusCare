@@ -1,7 +1,6 @@
-const CACHE_NAME = 'static-v48'; // Version Bump
-const DYNAMIC_CACHE = 'dynamic-v48';
+const CACHE_NAME = 'static-v50'; // Version Jump
+const DYNAMIC_CACHE = 'dynamic-v50';
 
-// Removed offline-db.js from here because we are embedding it
 const STATIC_ASSETS = [
   './',
   './index.php',
@@ -36,47 +35,42 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. FETCH: The Fix for White Screen Trap
+// 3. FETCH (The Important Part)
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Redirect to Login) ---
-  if (url.includes('/views/admin/') || url.includes('/views/faculty/')) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          return response; // If online, just return the page
-        })
-        .catch(() => {
-          // CRITICAL FIX: If offline, DON'T show white screen.
-          // Instead, Force Redirect to Login Page (index.php) which is cached.
-          return Response.redirect('./index.php', 302);
-        })
-    );
-    return;
-  }
-
-  // --- STRATEGY 2: STUDENT (Network First -> Cache -> Custom Offline.html) ---
+  // A. Navigation Requests (HTML Pages)
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
+          // ONLINE:
+          // Check if it's a Student Page (Dashboard/Report)
           if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
+            // Cache Student Pages
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
           }
+          // Note: We do NOT cache Admin/Faculty pages here. We just return them.
           return response;
         })
         .catch(() => {
-          // Students get the cool Radar page
-          return caches.match(event.request)
-            .then(resp => resp || caches.match('./offline.html'));
+          // OFFLINE:
+          // 1. Try to find the page in Cache (Works for Students)
+          return caches.match(event.request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // 2. If NOT in cache (Admins/Faculty fall here), show Offline Page
+            // This prevents the White Screen Trap!
+            return caches.match('./offline.html');
+          });
         })
     );
     return;
   }
 
-  // B. Assets
+  // B. Assets (CSS/JS) - Cache First
   event.respondWith(
     caches.match(event.request).then(cached => {
       return cached || fetch(event.request).catch(() => { });
@@ -84,7 +78,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. SYNC & DB Logic (Keep your existing DB code below)
+// --- SYNC & DB LOGIC (Keep existing DB code below) ---
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-new-reports') {
     event.waitUntil(
