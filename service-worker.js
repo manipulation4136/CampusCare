@@ -1,5 +1,5 @@
-const CACHE_NAME = 'static-v50'; // Version Jump
-const DYNAMIC_CACHE = 'dynamic-v50';
+const CACHE_NAME = 'static-v52'; // Version Bump
+const DYNAMIC_CACHE = 'dynamic-v52';
 
 const STATIC_ASSETS = [
   './',
@@ -35,34 +35,33 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. FETCH (The Important Part)
+// 3. FETCH (Unified Strategy: Cache Everything)
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // A. Navigation Requests (HTML Pages)
+  // --- UNIFIED STRATEGY: CACHE EVERYTHING (Network First) ---
+  // This applies to Students, Admins, and Faculty equally.
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // ONLINE:
-          // Check if it's a Student Page (Dashboard/Report)
-          if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
-            // Cache Student Pages
+          // If the page loads successfully (200 OK), CACHE IT.
+          // This includes Admin Dashboard, Faculty Views, etc.
+          if (response.status === 200) {
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
           }
-          // Note: We do NOT cache Admin/Faculty pages here. We just return them.
           return response;
         })
         .catch(() => {
-          // OFFLINE:
-          // 1. Try to find the page in Cache (Works for Students)
+          // OFFLINE FALLBACK:
+          // 1. Try to find the page in Cache (Works for everyone now)
           return caches.match(event.request).then((cachedResponse) => {
             if (cachedResponse) {
               return cachedResponse;
             }
-            // 2. If NOT in cache (Admins/Faculty fall here), show Offline Page
-            // This prevents the White Screen Trap!
+
+            // 2. If valid page not found in cache, show Radar Page
             return caches.match('./offline.html');
           });
         })
@@ -70,7 +69,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // B. Assets (CSS/JS) - Cache First
+  // Assets (CSS/JS) - Cache First
   event.respondWith(
     caches.match(event.request).then(cached => {
       return cached || fetch(event.request).catch(() => { });
