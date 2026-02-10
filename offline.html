@@ -5,64 +5,173 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - CampusCare</title>
     
-    <link rel="stylesheet" href="assets/css/style.css">
-
     <style>
-        .hidden { display: none !important; }
-        body, html { height: 100%; margin: 0; }
-        .offline-fallback-wrapper {
+        /* --- CRITICAL CSS EMBEDDED --- */
+        /* This ensures the page looks perfect regardless of folder structure */
+        
+        :root {
+            --bg: #0b1020;
+            --card: #131a2b;
+            --text: #e7ecff;
+            --muted: #8fa0c9;
+            --accent: #6ea8fe;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(180deg, #0b1020, #101631);
+            color: var(--text);
+            margin: 0;
+            height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            overflow: hidden;
             padding: 20px;
             box-sizing: border-box;
         }
+
+        /* Ambient Glow Animation */
+        .ambient-glow {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            background: radial-gradient(circle at 50% 50%, rgba(110, 168, 254, 0.15) 0%, transparent 60%);
+            filter: blur(80px);
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(19, 26, 43, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.5s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Icons & Typography */
+        .hero-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            background: rgba(110, 168, 254, 0.1);
+            border-radius: 50%;
+            color: var(--accent);
+        }
+
+        h1 { margin: 0 0 10px; font-size: 24px; color: white; }
+        p { margin: 0 0 20px; color: var(--muted); font-size: 15px; }
+
+        /* Buttons */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 10px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: none;
+            box-sizing: border-box;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #4a8adb);
+            color: #071226;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: white;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border: 1px solid;
+        }
+
+        .alert.error {
+            background: rgba(231, 76, 60, 0.15);
+            border-color: rgba(231, 76, 60, 0.3);
+            color: #ff9e93;
+        }
+
+        .alert.success {
+            background: rgba(39, 174, 96, 0.15);
+            border-color: rgba(39, 174, 96, 0.3);
+            color: #6ef5a3;
+        }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 
-<body class="login-wrapper offline-fallback-wrapper">
+<body>
 
     <div class="ambient-glow"></div>
 
-    <div class="glass-card" style="text-align: center; max-width: 400px; width: 100%;">
+    <div class="glass-card">
         
-        <div class="hero-icon" style="margin: 0 auto 20px auto; width: 80px; height: 80px; font-size: 40px; display: flex; align-items: center; justify-content: center; background: rgba(110, 168, 254, 0.1); border-radius: 50%; color: #6ea8fe;">
-            📡
-        </div>
+        <div class="hero-icon">📡</div>
 
-        <div class="login-header">
-            <h1 style="color: white; margin-bottom: 8px;">Connection Lost</h1>
-            <p style="color: #8fa0c9;">You seem to be offline.</p>
-        </div>
+        <h1>Connection Lost</h1>
+        <p>You seem to be offline.</p>
 
         <div id="admin-msg" class="hidden">
-            <div class="alert error" style="margin-bottom: 20px; background: rgba(231, 76, 60, 0.15); border: 1px solid rgba(231, 76, 60, 0.3); color: #ff9e93; padding: 12px; border-radius: 10px;">
+            <div class="alert error">
                 Admin access requires an internet connection.
             </div>
-            <button onclick="window.location.reload()" class="btn" style="width: 100%; background: var(--accent, #6ea8fe); border: none; padding: 12px; border-radius: 10px; color: #071226; font-weight: 600; cursor: pointer;">
+            <button onclick="window.location.reload()" class="btn btn-primary">
                 🔄 Try Reconnecting
             </button>
         </div>
 
         <div id="student-msg" class="hidden">
-            <div class="alert success" style="margin-bottom: 20px; background: rgba(39, 174, 96, 0.15); border: 1px solid rgba(39, 174, 96, 0.3); color: #6ef5a3; padding: 12px; border-radius: 10px;">
+            <div class="alert success">
                 Don't worry! You can still report damages.
             </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <a href="views/student/report_new.php" class="btn" style="text-decoration: none; display: block; background: var(--accent, #6ea8fe); color: #071226; padding: 12px; border-radius: 10px; font-weight: 600;">
-                    📝 Report Damage
-                </a>
-                <a href="views/student/dashboard.php" class="btn outline" style="text-decoration: none; display: block; background: transparent; border: 1px solid #6ea8fe; color: white; padding: 12px; border-radius: 10px; font-weight: 600;">
-                    🏠 Go to Dashboard
-                </a>
-            </div>
+            <a href="views/student/report_new.php" class="btn btn-primary">
+                📝 Report Damage
+            </a>
+            <a href="views/student/dashboard.php" class="btn btn-outline">
+                🏠 Go to Dashboard
+            </a>
         </div>
 
         <div id="default-msg" class="hidden">
-            <p style="color: #8fa0c9; margin-bottom: 20px;">Please check your internet connection.</p>
-            <button onclick="window.location.reload()" class="btn" style="width: 100%; background: var(--accent, #6ea8fe); border: none; padding: 12px; border-radius: 10px; color: #071226; font-weight: 600; cursor: pointer;">
+            <p>Please check your internet connection.</p>
+            <button onclick="window.location.reload()" class="btn btn-primary">
                 🔄 Reload
             </button>
         </div>
@@ -73,10 +182,12 @@
         document.addEventListener("DOMContentLoaded", function() {
             const role = localStorage.getItem('userRole');
             
+            // Hide all initially
             document.getElementById('admin-msg').classList.add('hidden');
             document.getElementById('student-msg').classList.add('hidden');
             document.getElementById('default-msg').classList.add('hidden');
 
+            // Show relevant message
             if (role === 'admin' || role === 'faculty') {
                 document.getElementById('admin-msg').classList.remove('hidden');
             } else if (role === 'student') {
