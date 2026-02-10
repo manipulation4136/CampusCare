@@ -1,5 +1,5 @@
-const CACHE_NAME = 'static-v45'; // Final Version Bump
-const DYNAMIC_CACHE = 'dynamic-v45';
+const CACHE_NAME = 'static-v46';
+const DYNAMIC_CACHE = 'dynamic-v46';
 
 // Removed offline-db.js from here because we are embedding it
 const STATIC_ASSETS = [
@@ -42,20 +42,20 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Offline Page) ---
+  // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Offline Page Fallback) ---
   if (url.includes('/views/admin/') || url.includes('/views/faculty/')) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Just return the network response. DO NOT CACHE IT.
+          // Return network response directly. DO NOT CACHE for security.
           return response;
         })
         .catch(() => {
-          // If Offline, show the Radar Page (No more white screen!)
+          // Network failed? Show Offline Page instead of White Screen.
           return caches.match('./offline.html');
         })
     );
-    return; // Stop here for admins
+    return;
   }
 
   // --- STRATEGY 2: STUDENT (Network First -> Cache -> Offline Page) ---
@@ -64,7 +64,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          // Cache Student Pages Only
+          // Only cache Student pages
           if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
             const clone = response.clone();
             caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
@@ -82,9 +82,7 @@ self.addEventListener('fetch', (event) => {
   // B. Assets (CSS/JS) - Cache First
   event.respondWith(
     caches.match(event.request).then(cached => {
-      return cached || fetch(event.request).catch(() => {
-        // Return nothing if missing
-      });
+      return cached || fetch(event.request).catch(() => { });
     })
   );
 });
