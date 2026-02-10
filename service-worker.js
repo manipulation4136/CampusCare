@@ -14,6 +14,8 @@ const STATIC_ASSETS = [
 
   './offline.html',
 
+  './views/student/report_new.php',
+
   './assets/css/style.css',
 
   './assets/js/app.js'
@@ -130,7 +132,7 @@ self.addEventListener('fetch', (event) => {
 
         .then((response) => {
 
-          // Cache Student Pages Only
+          // Cache Student Pages Only (Stale-While-Revalidate Logic base)
 
           if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
 
@@ -146,9 +148,29 @@ self.addEventListener('fetch', (event) => {
 
         .catch(() => {
 
+          // Network Failed. Try Cache.
+
           return caches.match(event.request)
 
-            .then(resp => resp || caches.match('./offline.html'));
+            .then(cachedResponse => {
+
+              if (cachedResponse) {
+
+                return cachedResponse;
+
+              }
+
+              // If NOT in cache, fall back to Offline Landing Page
+
+              // We prefer offline.php if it was cached (unlikely as it's dynamic but we can try), 
+
+              // otherwise offline.html is the static fallback. 
+
+              // Actually, our goal is to show the landing page which links to cached pages.
+
+              return caches.match('./offline.php').then(match => match || caches.match('./offline.html'));
+
+            });
 
         })
 
