@@ -3,23 +3,40 @@
 require_once __DIR__ . '/config/init.php';
 ?>
 <script>
-// CRITICAL: IMMEDIATE OFFLINE ROUTER
-// This runs BEFORE any PHP content is rendered from cache.
-if (!navigator.onLine) {
+// CRITICAL: CLIENT-SIDE ROUTER (Online & Offline)
+// This handles redirects because the Cached `index.php` is always the Login Page.
+
+document.addEventListener("DOMContentLoaded", function() {
     const role = localStorage.getItem('userRole');
     const isLoggedIn = localStorage.getItem('isLoggedIn');
-    
-    // CASE 1: Student -> Go to Dashboard
-    if (isLoggedIn === 'true' && role === 'student') {
-        window.stop(); // Stop rendering index.php
-        window.location.replace('views/student/dashboard.php');
+    const isOnline = navigator.onLine;
+
+    // 1. OFFLINE LOGIC
+    if (!isOnline) {
+        if (isLoggedIn === 'true' && role === 'student') {
+            window.stop();
+            window.location.replace('views/student/dashboard.php');
+        } else {
+            // Admin/Faculty/Guest -> Offline Page
+            window.stop();
+            window.location.replace('offline.html');
+        }
     } 
-    // CASE 2: Admin / Faculty / Not Logged In -> Go to Offline Page
+    // 2. ONLINE LOGIC (Fix for Admin Dashboard)
     else {
-        window.stop(); // Stop rendering index.php (Prevents White Screen)
-        window.location.replace('offline.html');
+        if (isLoggedIn === 'true') {
+            // If user is already logged in, don't show the Login Form!
+            // Redirect them to their respective dashboard.
+            if (role === 'admin') {
+                window.location.replace('views/admin/dashboard.php');
+            } else if (role === 'faculty') {
+                window.location.replace('views/faculty/dashboard.php');
+            } else if (role === 'student') {
+                window.location.replace('views/student/dashboard.php');
+            }
+        }
     }
-}
+});
 </script>
 <?php
 // ... The rest of the Router Logic ...
