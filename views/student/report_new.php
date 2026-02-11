@@ -456,94 +456,124 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 <?php endif; ?>
 
-document.addEventListener('DOMContentLoaded', function() {
-    const reportForm = document.getElementById('reportForm');
-    
-    // Register Service Worker if possible
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('<?= BASE_URL ?>service-worker.js')
-        .then(reg => console.log('SW Registered', reg))
-        .catch(err => console.log('SW Failed', err));
+    // 3. Helper: Convert Base64 Data URL to Blob
+    function dataURLtoBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], {type:mime});
     }
 
     // 1. Submit Listener
     reportForm.addEventListener('submit', async function(e) {
+        console.log("👉 Submit Button Clicked");
         
+        // Manual Validation Check
+        if (!reportForm.checkValidity()) {
+             console.warn("⚠️ Validation Failed. Letting browser show errors.");
+             return; // Let browser handle invalid fields
+        }
+
         // CHECK ONLINE STATUS FIRST
         if (!navigator.onLine) {
             e.preventDefault();
-            console.log('OFFLINE DETECTED: Saving locally...');
+            console.log("🚫 OFFLINE DETECTED: Initialization offline save...");
 
             const formData = new FormData(reportForm);
-            // Convert FormData to plain object for IndexedDB
             const data = {};
+            const imageFile = formData.get('image');
+
+            // Copy text fields
             formData.forEach((value, key) => {
-                data[key] = value;
-            });
-
-            // Use the offline-db.js function
-            saveReportLocally(data).then(() => {
-                // Register Background Sync if supported
-                if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                    navigator.serviceWorker.ready.then(registration => {
-                        return registration.sync.register('sync-new-reports');
-                    });
+                if (key !== 'image') {
+                    data[key] = value;
                 }
-                
-                // Clear form & UI Feedback
-                reportForm.reset();
-                
-                // Remove existing alerts if any
-                const existingAlerts = reportForm.parentElement.querySelectorAll('.alert');
-                existingAlerts.forEach(el => el.remove());
-
-                // Show "Saved Offline" message
-                const msg = document.createElement('div');
-                msg.className = 'alert success';
-                msg.innerHTML = '<i class="fa-solid fa-save"></i> <strong>Saved Offline:</strong> Report saved securely. It will be sent automatically when you reconnect.';
-                msg.style.marginBottom = '20px';
-                msg.style.backgroundColor = '#f39c12'; // Distinct color for offline save (Orange)
-                msg.style.borderColor = '#e67e22';
-
-                // Insert before form
-                reportForm.parentNode.insertBefore(msg, reportForm);
-                
-                // Optional: Scroll to top
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            }).catch(err => {
-                console.error("Failed to save report offline", err);
-                alert("Failed to save report offline. Please try again.");
             });
+
+            // Handle Image Serialization (File -> Base64)
+            if (imageFile && imageFile.name) {
+                console.log("🖼️ Image detected. Converting to Base64...");
+                const reader = new FileReader();
+                reader.readAsDataURL(imageFile);
+                
+                reader.onload = function() {
+                    console.log("✅ Image Converted.");
+                    data['image_data'] = reader.result; // Base64 string
+                    data['image_name'] = imageFile.name;
+                    data['image_type'] = imageFile.type;
+                    
+                    saveToIndexedDB(data);
+                };
+                
+                reader.onerror = function(error) {
+                    console.error("❌ Image conversion failed:", error);
+                    alert("Failed to process image. Please try again.");
+                };
+            } else {
+                console.log("ℹ️ No image to process.");
+                saveToIndexedDB(data);
+            }
 
             return; // STOP HERE
         }
 
         // ONLINE LOGIC (Normal Submit)
-        // ... Normal form submission continues here if online ...
         e.preventDefault();
+        console.log("🌐 Online Submit. Sending via Fetch...");
         
         const formData = new FormData(reportForm);
         
         try {
-            // First, attempt online submission via Fetch
             const response = await fetch(window.location.href, {
                 method: 'POST',
                 body: formData
             });
 
-            // If fetch succeeds (server reachable), display the result (likely the same page with success/error)
             const resultHtml = await response.text();
             document.open();
             document.write(resultHtml);
             document.close();
 
         } catch (error) {
-            // Fallback just in case fetch fails unexpectedly despite navigator.onLine being true
              console.log('Online submission failed unexpectedly:', error);
              alert("Connection failed. Please check your internet.");
         }
     });
+
+    function saveToIndexedDB(data) {
+        console.log("💾 Saving to IndexedDB...", data);
+        saveReportLocally(data).then(() => {
+            console.log("✅ Saved to DB Successfully.");
+            
+            // Register Background Sync
+            if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                navigator.serviceWorker.ready.then(registration => {
+                    return registration.sync.register('sync-new-reports');
+                });
+            }
+            
+            // UI Feedback
+            reportForm.reset();
+            const existingAlerts = reportForm.parentElement.querySelectorAll('.alert');
+            existingAlerts.forEach(el => el.remove());
+
+            const msg = document.createElement('div');
+            msg.className = 'alert success';
+            msg.innerHTML = '<i class="fa-solid fa-save"></i> <strong>Saved Offline:</strong> Report saved securely. It will be sent automatically when you reconnect.';
+            msg.style.marginBottom = '20px';
+            msg.style.backgroundColor = '#f39c12';
+            msg.style.borderColor = '#e67e22';
+
+            reportForm.parentNode.insertBefore(msg, reportForm);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        }).catch(err => {
+            console.error("❌ Failed to save report offline", err);
+            alert("Failed to save report offline. Please try again.");
+        });
+    }
 
     // 2. UI Updates for Offline Status
     function updateOnlineStatus() {
@@ -569,9 +599,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 offlineBar.style.boxShadow = '0 2px 10px rgba(0,0,0,0.3)';
                 offlineBar.innerText = 'You are Offline. Reports will be saved locally.';
                 document.body.appendChild(offlineBar);
-                
-                // Shift body down slightly? Maybe not necessary if floating, but ensuring visibility
-                // document.body.style.marginTop = '40px'; 
             }
             
             if (USER_ROLE === 'student' && !gameBtn) {
@@ -579,10 +606,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (header) {
                      gameBtn = document.createElement('a');
                      gameBtn.id = 'offline-game-btn';
-                     gameBtn.href = '/offline-game.html'; // Direct to offline game
+                     gameBtn.href = '/offline-game.html'; 
                      gameBtn.className = 'btn-login';
                      gameBtn.style.display = 'block';
-                     gameBtn.style.background = '#f39c12'; // Orange/Gold
+                     gameBtn.style.background = '#f39c12'; 
                      gameBtn.style.marginTop = '10px';
                      gameBtn.style.textAlign = 'center';
                      gameBtn.style.textDecoration = 'none';
@@ -592,11 +619,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
         } else {
-            // Online
              if (offlineBar) offlineBar.remove();
              if (gameBtn) gameBtn.remove();
              
-             // Try manual sync if needed, though SW handles it usually
              if ('serviceWorker' in navigator && 'SyncManager' in window) {
                   navigator.serviceWorker.ready.then(registration => {
                       registration.sync.register('sync-new-reports');
@@ -610,31 +635,31 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!navigator.onLine) return;
 
         try {
-             // 1. Get all pending reports from IndexedDB
-             // Note: openDB is from offline-db.js. 
-             // We can use helper getAllReports() if available, or direct transaction.
-             // Using helper from offline-db.js:
              const pendingReports = await getAllReports();
 
              if (pendingReports.length > 0) {
                  console.log(`📡 Found ${pendingReports.length} pending reports. Syncing now...`);
 
                  let syncedCount = 0;
-                 
-                 // Get FRESH CSRF Token from the current DOM
                  const csrfTokenInput = document.querySelector('input[name="csrf_token"]');
                  const freshCsrf = csrfTokenInput ? csrfTokenInput.value : '';
 
                  for (const report of pendingReports) {
                      const formData = new FormData();
-                     // Reconstruct FormData
+                     
                      for (const key in report.data) {
-                         if (key === 'csrf_token') continue; // Skip stale token
+                         if (key === 'csrf_token' || key === 'image_data' || key === 'image_name' || key === 'image_type') continue; 
                          formData.append(key, report.data[key]);
                      }
-                     // Add a flag to bypass duplicate checks if needed, or strictly validate
+                     
+                     // Handle Re-Image
+                     if (report.data.image_data) {
+                         // Convert Base64 back to Blob
+                         const blob = dataURLtoBlob(report.data.image_data);
+                         formData.append('image', blob, report.data.image_name);
+                     }
+
                      formData.append('is_sync', '1'); 
-                     // Inject FRESH CSRF Token
                      if(freshCsrf) formData.append('csrf_token', freshCsrf);
 
                      try {
@@ -644,7 +669,6 @@ document.addEventListener('DOMContentLoaded', function() {
                          });
                          
                          if (response.ok) {
-                             // Success! Delete from IDB
                              await deleteReport(report.id);
                              syncedCount++;
                              console.log(`✅ Report ${report.id} synced.`);
@@ -657,7 +681,6 @@ document.addEventListener('DOMContentLoaded', function() {
                  }
 
                  if (syncedCount > 0) {
-                     // Toast Notification
                      const toast = document.createElement('div');
                      toast.className = 'alert success';
                      toast.style.position = 'fixed';
@@ -668,7 +691,6 @@ document.addEventListener('DOMContentLoaded', function() {
                      document.body.appendChild(toast);
                      setTimeout(() => toast.remove(), 5000);
                      
-                     // Play Sound
                      if(typeof playAchievementSound === 'function') playAchievementSound();
                  }
              }
