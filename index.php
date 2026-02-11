@@ -2,42 +2,85 @@
 // index.php
 require_once __DIR__ . '/config/init.php';
 ?>
-<script>
-// CRITICAL: CLIENT-SIDE ROUTER (Online & Offline)
-// This handles redirects because the Cached `index.php` is always the Login Page.
-
-document.addEventListener("DOMContentLoaded", function() {
-    const role = localStorage.getItem('userRole');
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-    const isOnline = navigator.onLine;
-
-    // 1. OFFLINE LOGIC
-    if (!isOnline) {
-        if (isLoggedIn === 'true' && role === 'student') {
-            window.stop();
-            window.location.replace('views/student/dashboard.php');
-        } else {
-            // Admin/Faculty/Guest -> Offline Page
-            window.stop();
-            window.location.replace('offline.php');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusCare</title>
+    <style>
+        /* CRITICAL: Critical CSS for Instant Loading Screen */
+        body, html { margin: 0; padding: 0; height: 100%; background: #0b1020; font-family: sans-serif; }
+        
+        #app-loader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, #0b1020, #101631);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 99999; transition: opacity 0.5s ease;
         }
-    } 
-    // 2. ONLINE LOGIC (Fix for Admin Dashboard)
-    else {
-        if (isLoggedIn === 'true') {
-            // If user is already logged in, don't show the Login Form!
-            // Redirect them to their respective dashboard.
-            if (role === 'admin') {
-                window.location.replace('views/admin/dashboard.php');
-            } else if (role === 'faculty') {
-                window.location.replace('views/faculty/dashboard.php');
-            } else if (role === 'student') {
+        
+        .loader-spinner {
+            width: 50px; height: 50px;
+            border: 3px solid rgba(110, 168, 254, 0.1);
+            border-top: 3px solid #6ea8fe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        .loader-text { color: #6ea8fe; font-size: 14px; letter-spacing: 1px; font-weight: 600; }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Utility to hide loader */
+        .loader-hidden { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="app-loader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text">CAMPUSCARE</div>
+    </div>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const role = localStorage.getItem('userRole');
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const isOnline = navigator.onLine;
+
+        // Helper to remove loader if we stay on this page (Login)
+        function hideLoader() {
+            setTimeout(() => {
+                const loader = document.getElementById('app-loader');
+                if(loader) loader.classList.add('loader-hidden');
+            }, 500); // Small buffer for smoothness
+        }
+
+        // --- OFFLINE LOGIC ---
+        if (!isOnline) {
+            if (isLoggedIn === 'true' && role === 'student') {
                 window.location.replace('views/student/dashboard.php');
+            } else {
+                window.location.replace('offline.php');
+            }
+        } 
+        // --- ONLINE LOGIC ---
+        else {
+            if (isLoggedIn === 'true') {
+                // Redirecting... Keep loader visible
+                if (role === 'admin') window.location.replace('views/admin/dashboard.php');
+                else if (role === 'faculty') window.location.replace('views/faculty/dashboard.php');
+                else if (role === 'student') window.location.replace('views/student/dashboard.php');
+                else hideLoader(); // Fallback if role is unknown
+            } else {
+                // Not logged in? We need to show the Login Page.
+                // HIDE THE LOADER so the user can see the form.
+                hideLoader();
             }
         }
-    }
-});
-</script>
+    });
+    </script>
 <?php
 // ... The rest of the Router Logic ...
 
