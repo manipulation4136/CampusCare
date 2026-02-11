@@ -3,6 +3,37 @@ require_once __DIR__ . '/../../config/init.php';
 require_once __DIR__ . '/../../config/asset_helper.php';
 require_once __DIR__ . '/../../config/room_utils.php';
 
+// 1. OFFLINE-SAFE SESSION CHECK
+// If session is missing/expired, check connection before kicking out.
+if (!isset($_SESSION['user'])) {
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Checking Status...</title>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                if (!navigator.onLine) {
+                    // Offline? Go to Offline Page
+                    window.location.replace('../../offline.php');
+                } else {
+                    // Online & No Session? Go to Login
+                    window.location.replace('../../index.php?msg=Session expired');
+                }
+            });
+        </script>
+        <style>body{background:#0b1020;color:#6ea8fe;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;}</style>
+    </head>
+    <body>
+        <h2>Checking connection...</h2>
+    </body>
+    </html>
+    <?php
+    exit(); // Stop execution here
+}
+
 ensure_role(['student','faculty']);
 
 $error = '';
@@ -573,7 +604,77 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    window.addEventListener('online', updateOnlineStatus);
+    // 3. AGGRESSIVE MANUAL SYNC
+    async function checkAndSyncPendingReports() {
+        if (!navigator.onLine) return;
+
+        try {
+             // 1. Get all pending reports from IndexedDB
+             const db = await openDB(); 
+             // Note: openDB is from offline-db.js. 
+             // We can use helper getAllReports() if available, or direct transaction.
+             // Using helper from offline-db.js:
+             const pendingReports = await getAllReports();
+
+             if (pendingReports.length > 0) {
+                 console.log(`📡 Found ${pendingReports.length} pending reports. Syncing now...`);
+
+                 let syncedCount = 0;
+
+                 for (const report of pendingReports) {
+                     const formData = new FormData();
+                     // Reconstruct FormData
+                     for (const key in report.data) {
+                         formData.append(key, report.data[key]);
+                     }
+                     // Add a flag to bypass duplicate checks if needed, or strictly validate
+                     formData.append('is_sync', '1'); 
+
+                     try {
+                         const response = await fetch(window.location.href, {
+                             method: 'POST',
+                             body: formData
+                         });
+                         
+                         if (response.ok) {
+                             // Success! Delete from IDB
+                             await deleteReport(report.id);
+                             syncedCount++;
+                             console.log(`✅ Report ${report.id} synced.`);
+                         } else {
+                             console.error(`❌ Failed to sync report ${report.id}`);
+                         }
+                     } catch (e) {
+                         console.error("Network error during sync", e);
+                     }
+                 }
+
+                 if (syncedCount > 0) {
+                     // Toast Notification
+                     const toast = document.createElement('div');
+                     toast.className = 'alert success';
+                     toast.style.position = 'fixed';
+                     toast.style.bottom = '20px';
+                     toast.style.right = '20px';
+                     toast.style.zIndex = '9999';
+                     toast.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> <strong>Sync Complete</strong>: ${syncedCount} reports uploaded.`;
+                     document.body.appendChild(toast);
+                     setTimeout(() => toast.remove(), 5000);
+                     
+                     // Play Sound
+                     if(typeof playAchievementSound === 'function') playAchievementSound();
+                 }
+             }
+        } catch (err) {
+            console.error("Manual Sync Error:", err);
+        }
+    }
+
+    // Run Sync on Load (if online)
+    checkAndSyncPendingReports();
+
+    // Run Sync when coming back online
+    window.addEventListener('online', checkAndSyncPendingReports);
     window.addEventListener('offline', updateOnlineStatus);
     
     // Check initially
