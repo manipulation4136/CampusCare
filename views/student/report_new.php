@@ -1,4 +1,5 @@
 <?php
+define('SKIP_AUTH_CHECK', true); // Prevent init.php from redirecting automatically
 require_once __DIR__ . '/../../config/init.php';
 require_once __DIR__ . '/../../config/asset_helper.php';
 require_once __DIR__ . '/../../config/room_utils.php';
@@ -20,7 +21,7 @@ if (!isset($_SESSION['user'])) {
                     window.location.replace('../../offline.php');
                 } else {
                     // Online & No Session? Go to Login
-                    window.location.replace('../../index.php?msg=Session expired');
+                    window.location.replace('../../views/login.php?msg=Session expired');
                 }
             });
         </script>
@@ -610,7 +611,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
              // 1. Get all pending reports from IndexedDB
-             const db = await openDB(); 
              // Note: openDB is from offline-db.js. 
              // We can use helper getAllReports() if available, or direct transaction.
              // Using helper from offline-db.js:
@@ -620,15 +620,22 @@ document.addEventListener('DOMContentLoaded', function() {
                  console.log(`📡 Found ${pendingReports.length} pending reports. Syncing now...`);
 
                  let syncedCount = 0;
+                 
+                 // Get FRESH CSRF Token from the current DOM
+                 const csrfTokenInput = document.querySelector('input[name="csrf_token"]');
+                 const freshCsrf = csrfTokenInput ? csrfTokenInput.value : '';
 
                  for (const report of pendingReports) {
                      const formData = new FormData();
                      // Reconstruct FormData
                      for (const key in report.data) {
+                         if (key === 'csrf_token') continue; // Skip stale token
                          formData.append(key, report.data[key]);
                      }
                      // Add a flag to bypass duplicate checks if needed, or strictly validate
                      formData.append('is_sync', '1'); 
+                     // Inject FRESH CSRF Token
+                     if(freshCsrf) formData.append('csrf_token', freshCsrf);
 
                      try {
                          const response = await fetch(window.location.href, {
