@@ -34,7 +34,7 @@
                 <p style="color: #ff9e93; background: rgba(231,76,60,0.2); padding: 10px; border-radius: 8px;">
                     Admin access requires internet.
                 </p>
-                <button onclick="window.location.reload()" class="btn btn-primary">🔄 Try Reconnecting</button>
+                <a id="admin-dashboard-btn" href="#" class="btn btn-primary">🏠 Go to Dashboard</a>
             </div>
 
             <div id="student-msg" class="hidden">
@@ -62,8 +62,12 @@
         document.getElementById('student-msg').classList.add('hidden');
         document.getElementById('default-msg').classList.add('hidden');
 
-        if (role === 'admin' || role === 'faculty') {
+        if (role === 'admin') {
             document.getElementById('admin-msg').classList.remove('hidden');
+            document.getElementById('admin-dashboard-btn').href = "<?php echo BASE_URL; ?>views/admin/dashboard.php";
+        } else if (role === 'faculty') {
+            document.getElementById('admin-msg').classList.remove('hidden');
+            document.getElementById('admin-dashboard-btn').href = "<?php echo BASE_URL; ?>views/faculty/dashboard.php";
         } else if (role === 'student') {
             document.getElementById('student-msg').classList.remove('hidden');
         } else {
