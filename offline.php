@@ -40,13 +40,13 @@
             <div id="student-msg" class="hidden">
                 <p style="color: #6ef5a3; margin-bottom: 20px;">You can still report damages!</p>
                 
-                <button onclick="goToPage('views/student/report_new.php')" class="btn btn-primary">
+                <a href="<?php echo BASE_URL; ?>views/student/report_new.php" class="btn btn-primary">
                     📝 Report Damage
-                </button>
+                </a>
 
-                <button onclick="goToPage('views/student/dashboard.php')" class="btn btn-outline">
+                <a href="<?php echo BASE_URL; ?>views/student/dashboard.php" class="btn btn-outline">
                     🏠 Go to Dashboard
-                </button>
+                </a>
             </div>
 
             <div id="default-msg" class="hidden">
@@ -68,24 +68,6 @@
             document.getElementById('student-msg').classList.remove('hidden');
         } else {
             document.getElementById('default-msg').classList.remove('hidden');
-        }
-
-        // 2. SMART NAVIGATION FUNCTION (The Fix)
-        function goToPage(path) {
-            // Get the root URL dynamically (No PHP needed)
-            // If url is localhost/campuscare/offline.php, base is localhost/campuscare/
-            
-            // NOTE: We assume 'offline.php' is in the root folder.
-            // We construct the path using the current location to be safe.
-            
-            // This grabs "http://localhost/campuscare/" automatically
-            const baseUrl = window.location.href.split('offline.php')[0];
-            
-            // Full URL
-            const fullUrl = baseUrl + path;
-            
-            console.log("Navigating to:", fullUrl); // Debugging
-            window.location.href = fullUrl;
         }
     </script>
 </body>
