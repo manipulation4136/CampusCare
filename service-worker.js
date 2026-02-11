@@ -1,4 +1,4 @@
-const CACHE_NAME = 'static-v45'; // Final Version Bump
+const CACHE_NAME = 'static-v53'; // Final Version Bump
 
 const DYNAMIC_CACHE = 'dynamic-v45';
 
@@ -12,7 +12,7 @@ const STATIC_ASSETS = [
 
   './index.php',
 
-  './offline.html',
+  './offline.php',
 
   './views/student/report_new.php',
 
