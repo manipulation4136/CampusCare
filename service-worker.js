@@ -128,51 +128,27 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
 
-      fetch(event.request)
+      caches.match(event.request).then(cachedResponse => {
+        // STRATEGY: Try Cache First (so it works offline!)
+        if (cachedResponse) {
+          return cachedResponse;
+        }
 
-        .then((response) => {
-
-          // Cache Student Pages Only (Stale-While-Revalidate Logic base)
-
-          if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
-
-            const clone = response.clone();
-
-            caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
-
-          }
-
-          return response;
-
-        })
-
-        .catch(() => {
-
-          // Network Failed. Try Cache.
-
-          return caches.match(event.request)
-
-            .then(cachedResponse => {
-
-              if (cachedResponse) {
-
-                return cachedResponse;
-
-              }
-
-              // If NOT in cache, fall back to Offline Landing Page
-
-              // We prefer offline.php if it was cached (unlikely as it's dynamic but we can try), 
-
-              // otherwise offline.html is the static fallback. 
-
-              // Actually, our goal is to show the landing page which links to cached pages.
-
-              return caches.match('./offline.php').then(match => match || caches.match('./offline.php'));
-
-            });
-
-        })
+        // If not in cache, try Network
+        return fetch(event.request)
+          .then((response) => {
+            // Cache Student Pages Only (Stale-While-Revalidate Logic base)
+            if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
+              const clone = response.clone();
+              caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
+            }
+            return response;
+          })
+          .catch(() => {
+            // Network Failed & Not in Cache -> Fallback to Offline Page
+            return caches.match('./offline.php');
+          });
+      })
 
     );
 
