@@ -466,6 +466,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return new Blob([u8arr], {type:mime});
     }
 
+    // 4. Helper: Convert File to Base64 (Promise-based)
+    const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+
     // 1. Submit Listener
     reportForm.addEventListener('submit', async function(e) {
         console.log("👉 Submit Button Clicked");
@@ -473,49 +481,56 @@ document.addEventListener('DOMContentLoaded', function() {
         // Manual Validation Check
         if (!reportForm.checkValidity()) {
              console.warn("⚠️ Validation Failed. Letting browser show errors.");
-             return; // Let browser handle invalid fields
+             return; 
         }
 
         // CHECK ONLINE STATUS FIRST
         if (!navigator.onLine) {
             e.preventDefault();
             console.log("🚫 OFFLINE DETECTED: Initialization offline save...");
+            
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Saving Offline...";
+            btn.disabled = true;
 
-            const formData = new FormData(reportForm);
-            const data = {};
-            const imageFile = formData.get('image');
+            try {
+                const formData = new FormData(reportForm);
+                const data = {};
+                const imageFile = formData.get('image');
 
-            // Copy text fields
-            formData.forEach((value, key) => {
-                if (key !== 'image') {
-                    data[key] = value;
+                // 1. Collect Text Fields
+                formData.forEach((value, key) => {
+                    if (key !== 'image') data[key] = value;
+                });
+
+                // 2. Handle Image (Await ensures we wait for it!)
+                if (imageFile && imageFile.name) {
+                    console.log("🖼️ Converting Image...");
+                    try {
+                        data['image_data'] = await toBase64(imageFile);
+                        data['image_name'] = imageFile.name;
+                        data['image_type'] = imageFile.type;
+                        console.log("✅ Image Converted to Base64.");
+                    } catch (err) {
+                        console.error("Image conversion failed", err);
+                        alert("Image error. Saving text only.");
+                    }
+                } else {
+                    console.log("ℹ️ No image to process.");
                 }
-            });
 
-            // Handle Image Serialization (File -> Base64)
-            if (imageFile && imageFile.name) {
-                console.log("🖼️ Image detected. Converting to Base64...");
-                const reader = new FileReader();
-                reader.readAsDataURL(imageFile);
+                // 3. Save to DB
+                console.log("💾 Saving to IndexedDB...", data);
+                await saveToIndexedDB(data);
                 
-                reader.onload = function() {
-                    console.log("✅ Image Converted.");
-                    data['image_data'] = reader.result; // Base64 string
-                    data['image_name'] = imageFile.name;
-                    data['image_type'] = imageFile.type;
-                    
-                    saveToIndexedDB(data);
-                };
-                
-                reader.onerror = function(error) {
-                    console.error("❌ Image conversion failed:", error);
-                    alert("Failed to process image. Please try again.");
-                };
-            } else {
-                console.log("ℹ️ No image to process.");
-                saveToIndexedDB(data);
+            } catch (err) {
+                console.error("❌ Save Failed:", err);
+                alert("Save Failed: " + err.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
-
             return; // STOP HERE
         }
 
@@ -523,6 +538,11 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         console.log("🌐 Online Submit. Sending via Fetch...");
         
+        const btn = document.getElementById('submitBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "Sending...";
+        btn.disabled = true;
+
         const formData = new FormData(reportForm);
         
         try {
@@ -539,6 +559,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
              console.log('Online submission failed unexpectedly:', error);
              alert("Connection failed. Please check your internet.");
+             btn.innerText = originalText;
+             btn.disabled = false;
         }
     });
 
