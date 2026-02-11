@@ -1,8 +1,8 @@
 <?php
-// Session Configuration (1 day)
+// Session Configuration (1 Hour)
 date_default_timezone_set('Asia/Kolkata');
-ini_set('session.gc_maxlifetime', 86400);
-session_set_cookie_params(86400);
+ini_set('session.gc_maxlifetime', 3600);
+session_set_cookie_params(3600);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -26,7 +26,7 @@ define('DIR', BASE_PATH);
 // Safety Check: Redirect if session claims to be active but user is missing (Ghost Session)
 // Only applies if we are NOT in login or register page
 $current_script = basename($_SERVER['PHP_SELF']);
-if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['user']) && !in_array($current_script, ['login.php', 'register.php', 'index.php'])) {
+if (session_status() === PHP_SESSION_ACTIVE && empty($_SESSION['user']) && !in_array($current_script, ['login.php', 'register.php', 'index.php']) && (!defined('SKIP_AUTH_CHECK') || !SKIP_AUTH_CHECK)) {
     // Optional: Only redirect if it looks like a protected view
     if (strpos($_SERVER['REQUEST_URI'], '/views/') !== false) {
        header("Location: " . BASE_URL . "views/login.php?msg=Session+expired");
