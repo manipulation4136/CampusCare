@@ -8,6 +8,12 @@ require_once __DIR__ . '/config/init.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CampusCare</title>
+    
+    <!-- PWA & Icons (Absolute Paths) -->
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= BASE_URL ?>img/logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= BASE_URL ?>img/logo.png">
+    <link rel="manifest" href="<?= BASE_URL ?>manifest.json">
+    
     <style>
         /* CRITICAL: Critical CSS for Instant Loading Screen */
         body, html { margin: 0; padding: 0; height: 100%; background: #0b1020; font-family: sans-serif; }
