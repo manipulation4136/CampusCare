@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function() {
         } else {
             // Admin/Faculty/Guest -> Offline Page
             window.stop();
-            window.location.replace('offline.html');
+            window.location.replace('offline.php');
         }
     } 
     // 2. ONLINE LOGIC (Fix for Admin Dashboard)
