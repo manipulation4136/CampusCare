@@ -73,6 +73,31 @@
         } else {
             document.getElementById('default-msg').classList.remove('hidden');
         }
+
+        // 2. AUTO-REDIRECT LOGIC
+        const BASE_URL = "<?php echo BASE_URL; ?>";
+
+        function checkConnectionAndRedirect() {
+            if (navigator.onLine) {
+                console.log("Connection restored! Redirecting...");
+                
+                if (role === 'admin') {
+                    window.location.href = BASE_URL + 'views/admin/dashboard.php';
+                } else if (role === 'faculty') {
+                    window.location.href = BASE_URL + 'views/faculty/dashboard.php';
+                } else if (role === 'student') {
+                    window.location.href = BASE_URL + 'views/student/dashboard.php';
+                } else {
+                    window.location.reload();
+                }
+            }
+        }
+
+        // Listen for network changes
+        window.addEventListener('online', checkConnectionAndRedirect);
+
+        // Check once immediately on load (just in case)
+        checkConnectionAndRedirect();
     </script>
 </body>
 </html>
