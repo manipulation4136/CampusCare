@@ -108,7 +108,7 @@ self.addEventListener('fetch', (event) => {
 
           // If Offline, show the Radar Page (No more white screen!)
 
-          return caches.match('./offline.html');
+          return caches.match('./offline.php');
 
         })
 
@@ -168,7 +168,7 @@ self.addEventListener('fetch', (event) => {
 
               // Actually, our goal is to show the landing page which links to cached pages.
 
-              return caches.match('./offline.php').then(match => match || caches.match('./offline.html'));
+              return caches.match('./offline.php').then(match => match || caches.match('./offline.php'));
 
             });
 
