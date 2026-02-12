@@ -42,7 +42,17 @@ $ok = '';
 $qr_id = $_GET['qr_id'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!verify_csrf()) die('CSRF validation failed');
+    $is_ajax = isset($_POST['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
+
+    if (!verify_csrf()) {
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            http_response_code(403);
+            echo json_encode(['success' => false, 'error' => 'CSRF validation failed']);
+            exit;
+        }
+        die('CSRF validation failed');
+    }
     
     // Inputs
     $asset_code = trim($_POST['asset_code'] ?? '');
@@ -295,6 +305,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = $e->getMessage();
             }
         }
+    }
+
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+        if ($error) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $error]);
+        } else {
+            echo json_encode(['success' => true, 'message' => $ok]);
+        }
+        exit;
     }
 }
 
@@ -600,22 +621,29 @@ document.addEventListener('DOMContentLoaded', function() {
                      // Add a flag to bypass duplicate checks if needed, or strictly validate
                      formData.append('is_sync', '1'); 
 
+                     // Add ajax flag
+                     formData.append('ajax', '1');
+
                      try {
                          const response = await fetch(window.location.href, {
                              method: 'POST',
-                             body: formData
+                             body: formData,
+                             headers: { 'X-Requested-With': 'XMLHttpRequest' }
                          });
                          
-                         if (response.ok) {
+                         const res = await response.json();
+
+                         if (res.success) {
                              // Success! Delete from IDB
                              await deleteReport(report.id);
                              syncedCount++;
                              console.log(`✅ Report ${report.id} synced.`);
                          } else {
-                             console.error(`❌ Failed to sync report ${report.id}`);
+                             console.error(`❌ Failed to sync report ${report.id}:`, res.error);
+                             // Do NOT delete from IDB, allowing retry
                          }
                      } catch (e) {
-                         console.error("Network error during sync", e);
+                         console.error("Network or JSON error during sync", e);
                      }
                  }
 
