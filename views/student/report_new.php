@@ -172,6 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$error && $asset) {
             if ($asset['status'] === 'Needs Repair') {
                 $error = 'DUPLICATE_REPORT';
+                // Notify Student about duplicate
+                 $msg = "⚠️ Report Failed: A report for {$asset_code} is already active.";
+                 notify_user($conn, (int)$reported_by, $msg);
             } else {
                 if ($asset['parent_asset_id'] && empty($cpu_id)) {
                     $error = 'CPU ID is required for computer components.';
@@ -299,6 +302,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $msg = "⚠️ Action Required: New $urgency_priority priority report for $n_asset_name in Room $n_room_no";
                     notify_user($conn, (int)$admin['id'], $msg);
                 }
+
+                // Notify Student (Success)
+                $msg = "✅ Report Submitted: Your report for {$asset_code} in {$n_room_no} has been received successfully.";
+                notify_user($conn, (int)$reported_by, $msg);
 
             } catch (Exception $e) {
                 $conn->rollback();
@@ -659,6 +666,12 @@ document.addEventListener('DOMContentLoaded', function() {
                              console.log(`✅ Report ${report.id} synced.`);
                          } else {
                              console.error(`❌ Failed to sync report ${report.id}:`, res.error);
+                             
+                             // Alert User
+                             if(navigator.onLine) {
+                                alert("❌ Sync Failed for asset " + report.data.asset_code + ": " + res.error);
+                             }
+                             
                              // Do NOT delete from IDB, allowing retry
                          }
                      } catch (e) {
@@ -792,15 +805,13 @@ function renderDropdown() {
         hasMatches = true;
     }
 
-    // Always show missing sticker option at the bottom if applicable
-    if ("MISSING_STICKER".includes(filter) || filter === '') {
-        const div = document.createElement('div');
-        div.className = 'dropdown-option';
-        div.innerHTML = `<strong style="color: #e74c3c;">${missingOptionCode}</strong> <small>${missingOptionText}</small>`;
-        div.onclick = function() { selectAsset('MISSING_STICKER'); };
-        dropdown.appendChild(div);
-        hasMatches = true;
-    }
+    // ALWAYS show Missing Sticker option
+    const div = document.createElement('div');
+    div.className = 'dropdown-option';
+    div.innerHTML = `<strong style="color: #e74c3c;">FAILED TO SCAN? </strong> <small>Click here to report without a code</small>`;
+    div.onclick = function() { selectAsset('MISSING_STICKER'); };
+    dropdown.appendChild(div);
+    hasMatches = true;
 
     // Show/Hide Dropdown
     if (hasMatches) { // Only show if we have data or user is typing
