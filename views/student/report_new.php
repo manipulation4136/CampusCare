@@ -514,6 +514,14 @@ document.addEventListener('DOMContentLoaded', function() {
             data[key] = value;
         });
 
+        // Safety Check
+        if (typeof saveReportLocally !== 'function') {
+             alert("Offline resources are missing. Please reload the page when you are back online.");
+             btn.disabled = false;
+             btn.innerHTML = originalText;
+             return;
+        }
+
         // Use the offline-db.js function
         saveReportLocally(data).then(() => {
             // Register Background Sync if supported
