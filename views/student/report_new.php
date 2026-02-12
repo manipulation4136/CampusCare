@@ -500,6 +500,11 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         console.log('OFFLINE DETECTED: Saving locally...');
 
+        const btn = document.getElementById('submitBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving Offline...';
+
         const formData = new FormData(reportForm);
         // Convert FormData to plain object for IndexedDB
         // We need to handle files appropriately. 
@@ -514,12 +519,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Register Background Sync if supported
             if ('serviceWorker' in navigator && 'SyncManager' in window) {
                 navigator.serviceWorker.ready.then(registration => {
-                    return registration.sync.register('sync-new-reports');
+                    return registration.sync.register('sync-reports');
                 });
             }
             
             // Clear form & UI Feedback
             reportForm.reset();
+            // Clear any programmatic state if needed
+            if(window.resetAutoFill) window.resetAutoFill(); 
             
             // Remove existing alerts if any
             const existingAlerts = reportForm.parentElement.querySelectorAll('.alert');
@@ -542,6 +549,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }).catch(err => {
             console.error("Failed to save report offline", err);
             alert("Failed to save report offline. Please try again.");
+        }).finally(() => {
+            // Restore button state regardless of outcome
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         });
     });
 
@@ -672,7 +683,10 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAndSyncPendingReports();
 
     // Run Sync when coming back online
-    window.addEventListener('online', checkAndSyncPendingReports);
+    window.addEventListener('online', () => {
+        checkAndSyncPendingReports();
+        fetchRoomAssets(); // Retry asset fetch on reconnection
+    });
     window.addEventListener('offline', updateOnlineStatus);
     
     // Check initially
