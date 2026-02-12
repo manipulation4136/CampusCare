@@ -808,7 +808,7 @@ function renderDropdown() {
     // ALWAYS show Missing Sticker option
     const div = document.createElement('div');
     div.className = 'dropdown-option';
-    div.innerHTML = `<strong style="color: #e74c3c;">FAILED TO SCAN? </strong> <small>Click here to report without a code</small>`;
+    div.innerHTML = `<strong style="color: #e74c3c;">MISSING_STICKER </strong> <small>Click here to report without a code</small>`;
     div.onclick = function() { selectAsset('MISSING_STICKER'); };
     dropdown.appendChild(div);
     hasMatches = true;
@@ -1093,3 +1093,4 @@ textarea.input-dark::placeholder { color: rgba(255, 255, 255, 0.6); }
     background: rgba(255,255,255,0.1);
 }
 </style>
+
