@@ -597,27 +597,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.body.appendChild(offlineBar);
             }
             
-            if (USER_ROLE === 'student' && !gameBtn) {
-                const header = document.querySelector('.login-header');
-                if (header) {
-                     gameBtn = document.createElement('a');
-                     gameBtn.id = 'offline-game-btn';
-                     gameBtn.href = '/offline-game.html'; // Direct to offline game
-                     gameBtn.className = 'btn-login';
-                     gameBtn.style.display = 'block';
-                     gameBtn.style.background = '#f39c12'; // Orange/Gold
-                     gameBtn.style.marginTop = '10px';
-                     gameBtn.style.textAlign = 'center';
-                     gameBtn.style.textDecoration = 'none';
-                     gameBtn.innerHTML = '<i class="fa-solid fa-gamepad"></i> 🎮 Play Time Killer';
-                     header.appendChild(gameBtn);
-                }
-            }
-            
         } else {
             // Online
              if (offlineBar) offlineBar.remove();
-             if (gameBtn) gameBtn.remove();
         }
     }
 
@@ -1093,4 +1075,3 @@ textarea.input-dark::placeholder { color: rgba(255, 255, 255, 0.6); }
     background: rgba(255,255,255,0.1);
 }
 </style>
-
