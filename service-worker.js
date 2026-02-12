@@ -205,7 +205,7 @@ self.addEventListener('fetch', (event) => {
 // 4. SYNC (Using the embedded functions)
 
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-reports') {
+  if (event.tag === 'sync-reports' || event.tag === 'sync-new-reports') {
     event.waitUntil(syncPendingReports());
   }
 });
@@ -233,7 +233,11 @@ async function syncPendingReports() {
         const res = await response.json();
         if (res.success) {
           await deleteReport(report.id);
+        } else {
+          console.error('Server returned error for report:', report.id, res);
         }
+      } else {
+        console.error('Network response was not ok for report:', report.id);
       }
     } catch (error) {
       console.error('Sync failed for report:', report.id, error);
