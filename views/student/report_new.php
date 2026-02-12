@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Register Background Sync if supported
             if ('serviceWorker' in navigator && 'SyncManager' in window) {
                 navigator.serviceWorker.ready.then(registration => {
-                    return registration.sync.register('sync-new-reports');
+                    return registration.sync.register('sync-reports');
                 });
             }
             
@@ -672,7 +672,10 @@ document.addEventListener('DOMContentLoaded', function() {
     checkAndSyncPendingReports();
 
     // Run Sync when coming back online
-    window.addEventListener('online', checkAndSyncPendingReports);
+    window.addEventListener('online', () => {
+         checkAndSyncPendingReports();
+         fetchRoomAssets(); // Retry asset fetch
+    });
     window.addEventListener('offline', updateOnlineStatus);
     
     // Check initially
