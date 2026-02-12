@@ -488,60 +488,60 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 1. Submit Listener
     reportForm.addEventListener('submit', function(e) {
+        if (navigator.onLine) return; // Online? Let PHP handle it.
+
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
         
-        // CHECK ONLINE STATUS FIRST
-        if (navigator.onLine) {
-            // ONLINE: Allow default form submission (PHP handles it)
-            // No e.preventDefault() here!
+        // 1. UI Feedback: Prevent "Stuck" feeling
+        const originalText = btn.innerText;
+        btn.innerText = "Saving to Device...";
+        btn.disabled = true;
+        btn.style.opacity = "0.7";
+
+        const formData = new FormData(reportForm);
+        const data = {};
+        formData.forEach((value, key) => data[key] = value);
+
+        // 2. Save Logic with Error Handling
+        if (typeof saveReportLocally !== 'function') {
+            alert("Error: Offline storage module missing.");
+            btn.disabled = false;
+            btn.innerText = originalText;
             return;
         }
 
-        // OFFLINE: Prevent default and save locally
-        e.preventDefault();
-        console.log('OFFLINE DETECTED: Saving locally...');
-
-        const formData = new FormData(reportForm);
-        // Convert FormData to plain object for IndexedDB
-        // We need to handle files appropriately. 
-        // IndexedDB can store Blobs/Files directly.
-        const data = {};
-        formData.forEach((value, key) => {
-            data[key] = value;
-        });
-
-        // Use the offline-db.js function
         saveReportLocally(data).then(() => {
-            // Register Background Sync if supported
+            // Register Background Sync
             if ('serviceWorker' in navigator && 'SyncManager' in window) {
-                navigator.serviceWorker.ready.then(registration => {
-                    return registration.sync.register('sync-reports');
-                });
+                navigator.serviceWorker.ready.then(reg => reg.sync.register('sync-reports'));
             }
             
-            // Clear form & UI Feedback
+            // Success UI
             reportForm.reset();
+            btn.disabled = false;
+            btn.innerText = originalText;
+            btn.style.opacity = "1";
             
-            // Remove existing alerts if any
+            // Remove existing alerts
             const existingAlerts = reportForm.parentElement.querySelectorAll('.alert');
             existingAlerts.forEach(el => el.remove());
 
-            // Show "Saved Offline" message
+            // Show Success Message
             const msg = document.createElement('div');
             msg.className = 'alert success';
-            msg.innerHTML = '<i class="fa-solid fa-save"></i> <strong>Saved Offline:</strong> Report saved securely. It will be sent automatically when you reconnect.';
-            msg.style.marginBottom = '20px';
-            msg.style.backgroundColor = '#f39c12'; // Distinct color for offline save (Orange)
-            msg.style.borderColor = '#e67e22';
-
-            // Insert before form
+            msg.innerHTML = '<i class="fa-solid fa-save"></i> <strong>Saved Offline:</strong> Report saved. Will send when online.';
             reportForm.parentNode.insertBefore(msg, reportForm);
             
-            // Optional: Scroll to top
+            // Scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
         }).catch(err => {
-            console.error("Failed to save report offline", err);
-            alert("Failed to save report offline. Please try again.");
+            console.error("Offline Save Error:", err);
+            alert("Failed to save report. Please check your storage settings.");
+            btn.disabled = false;
+            btn.innerText = originalText;
+            btn.style.opacity = "1";
         });
     });
 
