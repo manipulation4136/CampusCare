@@ -128,27 +128,51 @@ self.addEventListener('fetch', (event) => {
 
     event.respondWith(
 
-      caches.match(event.request).then(cachedResponse => {
-        // STRATEGY: Try Cache First (so it works offline!)
-        if (cachedResponse) {
-          return cachedResponse;
-        }
+      fetch(event.request)
 
-        // If not in cache, try Network
-        return fetch(event.request)
-          .then((response) => {
-            // Cache Student Pages Only (Stale-While-Revalidate Logic base)
-            if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
-              const clone = response.clone();
-              caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
-            }
-            return response;
-          })
-          .catch(() => {
-            // Network Failed & Not in Cache -> Fallback to Offline Page
-            return caches.match('./offline.php');
-          });
-      })
+        .then((response) => {
+
+          // Cache Student Pages Only (Stale-While-Revalidate Logic base)
+
+          if (response.status === 200 && (url.includes('/student/') || url.includes('dashboard'))) {
+
+            const clone = response.clone();
+
+            caches.open(DYNAMIC_CACHE).then(cache => cache.put(event.request, clone));
+
+          }
+
+          return response;
+
+        })
+
+        .catch(() => {
+
+          // Network Failed. Try Cache.
+
+          return caches.match(event.request)
+
+            .then(cachedResponse => {
+
+              if (cachedResponse) {
+
+                return cachedResponse;
+
+              }
+
+              // If NOT in cache, fall back to Offline Landing Page
+
+              // We prefer offline.php if it was cached (unlikely as it's dynamic but we can try), 
+
+              // otherwise offline.html is the static fallback. 
+
+              // Actually, our goal is to show the landing page which links to cached pages.
+
+              return caches.match('./offline.php').then(match => match || caches.match('./offline.php'));
+
+            });
+
+        })
 
     );
 
@@ -181,50 +205,41 @@ self.addEventListener('fetch', (event) => {
 // 4. SYNC (Using the embedded functions)
 
 self.addEventListener('sync', (event) => {
-
-  if (event.tag === 'sync-new-reports') {
-
-    event.waitUntil(
-
-      getAllReports().then((reports) => { // Now this function is guaranteed to exist
-
-        const syncPromises = reports.map((report) => {
-
-          const formData = new FormData();
-
-          for (const key in report.data) {
-
-            formData.append(key, report.data[key]);
-
-          }
-
-
-
-          return fetch('./views/student/report_new.php', {
-
-            method: 'POST',
-
-            body: formData,
-
-            credentials: 'include'
-
-          }).then(res => {
-
-            if (res.ok) return deleteReport(report.id);
-
-          });
-
-        });
-
-        return Promise.all(syncPromises);
-
-      })
-
-    );
-
+  if (event.tag === 'sync-reports') {
+    event.waitUntil(syncPendingReports());
   }
-
 });
+
+async function syncPendingReports() {
+  const reports = await getAllReports();
+  if (reports.length === 0) return;
+
+  for (const report of reports) {
+    const formData = new FormData();
+    for (const key in report.data) {
+      formData.append(key, report.data[key]);
+    }
+    formData.append('ajax', '1'); // Ensure JSON response
+    formData.append('is_sync', '1');
+
+    try {
+      const response = await fetch('./views/student/report_new.php', {
+        method: 'POST',
+        body: formData,
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+
+      if (response.ok) {
+        const res = await response.json();
+        if (res.success) {
+          await deleteReport(report.id);
+        }
+      }
+    } catch (error) {
+      console.error('Sync failed for report:', report.id, error);
+    }
+  }
+}
 
 
 
@@ -270,7 +285,8 @@ function saveReportLocally(data) {
 
       const tx = db.transaction([STORE_NAME], 'readwrite');
 
-      const req = tx.objectStore(STORE_NAME).add(data);
+      const uniqueKey = Date.now() + Math.random();
+      const req = tx.objectStore(STORE_NAME).add(data, uniqueKey);
 
       req.onsuccess = () => resolve(req.result);
 
