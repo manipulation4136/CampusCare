@@ -118,14 +118,21 @@ function checkNewNotifications() {
                 audio.volume = 0.6;
                 audio.play().catch(e => console.error('🚫 Autoplay blocked:', e));
             }
-            // Simple alert fallback
-            const alert = document.createElement('div');
-            alert.innerHTML = `🔔 ${newCount} new notification${newCount > 1 ? 's' : ''}!`;
-            alert.className = 'alert success';
-            alert.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;cursor:pointer;max-width:90%;text-align:center;box-shadow: 0 4px 12px rgba(0,0,0,0.15);';
-            alert.onclick = () => { alert.remove(); };
-            document.body.appendChild(alert);
-            setTimeout(() => { if(alert) alert.remove(); }, 5000);
+            
+            // New Toast Logic
+            const toast = document.createElement('div');
+            toast.className = 'notif-toast';
+            toast.innerHTML = `<i class="fa-solid fa-bell"></i> <div><strong>New Notification</strong><br><small>${newCount} new message(s)</small></div>`;
+            toast.onclick = () => { 
+                window.location.href = '<?= BASE_URL ?>views/notifications.php'; 
+            };
+            document.body.appendChild(toast);
+            
+            // Auto hide
+            setTimeout(() => { 
+                toast.style.animation = 'slideInRight 0.5s reverse forwards';
+                setTimeout(() => toast.remove(), 500);
+            }, 5000);
         }
         lastCount = count;
     })
@@ -133,7 +140,26 @@ function checkNewNotifications() {
     <?php endif; ?>
 }
 
-// 🛑 POLLING INTERVAL SET TO 1 MINUTE (60,000 ms)
+function markNotificationsRead(event) {
+    event.preventDefault();
+    const link = event.currentTarget.href;
+    
+    // Immediate UI Update
+    const badges = document.querySelectorAll('.notif-badge');
+    badges.forEach(b => b.style.display = 'none');
+    lastCount = 0;
+
+    // Async Update
+    fetch('<?= BASE_URL ?>includes/ajax_mark_read.php', { method: 'POST' })
+        .then(() => {
+            window.location.href = link;
+        })
+        .catch(() => {
+             window.location.href = link;
+        });
+}
+
+// 🛑 POLLING INTERVAL SET TO 1 MINUTE
 setInterval(checkNewNotifications, 60000); 
 
 // Initial check after 2 seconds (so user sees badges on load)
@@ -172,7 +198,7 @@ window.addEventListener('click', function(event) {
   
   <div class="header-right">
     <?php if ($user): ?>
-      <a href="<?= BASE_URL ?>views/notifications.php" class="icon-btn" title="Notifications">
+      <a href="<?= BASE_URL ?>views/notifications.php" class="icon-btn" title="Notifications" onclick="markNotificationsRead(event)">
         🔔 
         <span class="notif-badge" style="display: <?= ($unread_count ?? 0) > 0 ? 'flex' : 'none' ?>;">
             <?= ($unread_count ?? 0) > 99 ? '99+' : ($unread_count ?? 0) ?>
