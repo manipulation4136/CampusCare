@@ -37,7 +37,8 @@ function saveReportLocally(data) {
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
-            const request = store.add(data);
+            const uniqueKey = Date.now() + Math.random();
+            const request = store.add(data, uniqueKey);
 
             request.onsuccess = () => {
                 resolve(request.result); // Returns the new key
