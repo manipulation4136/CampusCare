@@ -94,11 +94,17 @@ include __DIR__ . '/../../partials/header.php';
                 <label>Room Type <span style="color: #e74c3c;">*</span></label>
                 <select class="input" name="room_type" required>
                     <option value="">Select Type</option>
-                    <option value="classroom">Classroom</option>
-                    <option value="lab">Laboratory</option>
-                    <option value="library">Library</option>
-                    <option value="toilet">Toilet</option>
-                    <option value="office">Office</option>
+                    <option value="Classroom">Classroom</option>
+                    <option value="Laboratory">Laboratory</option>
+                    <option value="Library">Library</option>
+                    <option value="Staff Room">Staff Room</option>
+                    <option value="Seminar Hall">Seminar Hall</option>
+                    <option value="Auditorium">Auditorium</option>
+                    <option value="Boys Restroom">Boys Restroom</option>
+                    <option value="Girls Restroom">Girls Restroom</option>
+                    <option value="Staff Restroom">Staff Restroom</option>
+                    <option value="Store Room">Store Room</option>
+                    <option value="Server Room">Server Room</option>
                 </select>
             </div>
             
