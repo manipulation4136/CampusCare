@@ -105,6 +105,7 @@ include __DIR__ . '/../../partials/header.php';
                     <option value="Staff Restroom">Staff Restroom</option>
                     <option value="Store Room">Store Room</option>
                     <option value="Server Room">Server Room</option>
+                    <option value="Office">Office</option>
                 </select>
             </div>
             
