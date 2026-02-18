@@ -435,9 +435,9 @@ function playAchievementSound() {
         </div>
 
         <div style="margin-bottom: 25px;">
-            <label style="color: #ccc; font-size: 0.9em; margin-bottom: 5px; display: block;">Image (Optional)</label>
+            <label style="color: #ccc; font-size: 0.9em; margin-bottom: 5px; display: block;">Image</label>
             <div class="input-group">
-                <input class="input-dark" type="file" name="image" accept="image/*" style="padding-top: 10px;">
+                <input class="input-dark" type="file" name="image" accept="image/*" required style="padding-top: 10px;">
                 <i class="fa-solid fa-camera"></i>
             </div>
         </div>
