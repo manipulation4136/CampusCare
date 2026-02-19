@@ -233,11 +233,11 @@ async function syncPendingReports() {
 
       if (response.ok) {
         const res = await response.json();
-        if (res.success) {
-          await deleteReport(report.id);
-        } else {
-          console.error('Server returned error for report:', report.id, res);
-        }
+        if (res.success || res.error === 'DUPLICATE_REPORT') {
+    await deleteReport(report.id);
+} else {
+    console.error('Server returned error for report:', report.id, res);
+}
       } else {
         console.error('Network response was not ok for report:', report.id);
       }
@@ -367,3 +367,4 @@ function deleteReport(id) {
   });
 
 }
+
