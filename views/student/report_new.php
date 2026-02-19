@@ -641,12 +641,14 @@ document.addEventListener('DOMContentLoaded', function() {
                          
                          const res = await response.json();
 
-                         if (res.success) {
-                             // Success! Delete from IDB
-                             await deleteReport(report.id);
-                             syncedCount++;
-                             console.log(`✅ Report ${report.id} synced.`);
-                         } else {
+                         if (res.success || res.error === 'DUPLICATE_REPORT') { 
+    // Duplicate ആണെങ്കിലും IDB യിൽ നിന്ന് കളയണം
+    await deleteReport(report.id);
+    if (res.success) {
+        syncedCount++;
+    }
+    console.log(`■ Report ${report.id} processed.`);
+} else {
                              console.error(`❌ Failed to sync report ${report.id}:`, res.error);
                              
                              // Alert User
@@ -1075,3 +1077,4 @@ textarea.input-dark::placeholder { color: rgba(255, 255, 255, 0.6); }
     background: rgba(255,255,255,0.1);
 }
 </style>
+
