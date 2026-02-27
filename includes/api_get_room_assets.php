@@ -18,9 +18,13 @@ try {
             a.asset_code, 
             a.status,
             a.parent_asset_id,
-            an.name as asset_name 
+            an.name as asset_name,
+            r.room_no,
+            pa.asset_code as parent_code
         FROM assets a
         JOIN asset_names an ON a.asset_name_id = an.id
+        JOIN rooms r ON a.room_id = r.id
+        LEFT JOIN assets pa ON a.parent_asset_id = pa.id
         WHERE a.room_id = ? AND a.asset_name_id = ?
         ORDER BY a.asset_code ASC
     ");
@@ -35,7 +39,9 @@ try {
             'code' => $row['asset_code'],
             'status' => $row['status'],
             'has_parent' => !empty($row['parent_asset_id']),
-            'name' => $row['asset_name']
+            'name' => $row['asset_name'],
+            'room_no' => $row['room_no'],
+            'parent_code' => $row['parent_code']
         ];
     }
     
