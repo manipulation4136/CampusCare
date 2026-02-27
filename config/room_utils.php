@@ -12,6 +12,16 @@ function isRoomExamReady($conn, $room_id, $room_type) {
         return null;
     }
 
+    // Check if room is eligible for exams
+    $stmt = $conn->prepare("SELECT is_exam_eligible FROM rooms WHERE id = ?");
+    $stmt->bind_param("i", $room_id);
+    $stmt->execute();
+    $eligibilityResult = $stmt->get_result()->fetch_assoc();
+    
+    if (!$eligibilityResult || $eligibilityResult['is_exam_eligible'] == 0) {
+        return 'Not Ready';
+    }
+
     // Optimized query to check both conditions at once
     $stmt = $conn->prepare("
         SELECT 
@@ -82,6 +92,7 @@ function getExamReadyRooms($conn) {
             r.*, 
             er.status_exam_ready,
             CASE 
+                WHEN r.is_exam_eligible = 0 THEN 'Not Ready'
                 WHEN SUM(CASE WHEN dr.status IN ('pending', 'assigned', 'in_progress') THEN 1 ELSE 0 END) = 0 
                      AND SUM(CASE WHEN a.status = 'Needs Repair' THEN 1 ELSE 0 END) = 0 
                 THEN 'Yes' 
@@ -110,6 +121,7 @@ function getAllExamRoomsWithStatus($conn) {
             er.updated_at as status_updated_at,
             COUNT(CASE WHEN dr.status IN ('pending', 'assigned', 'in_progress') THEN 1 END) as open_reports_count,
             CASE 
+                WHEN r.is_exam_eligible = 0 THEN 'Not Ready'
                 WHEN SUM(CASE WHEN dr.status IN ('pending', 'assigned', 'in_progress') THEN 1 ELSE 0 END) = 0 
                      AND SUM(CASE WHEN a.status = 'Needs Repair' THEN 1 ELSE 0 END) = 0 
                 THEN 'Yes' 
