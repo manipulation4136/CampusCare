@@ -94,7 +94,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch dropdown data
 $rooms = $conn->query("SELECT id, building, floor, room_no FROM rooms ORDER BY building, floor, room_no");
-$asset_list = $conn->query("SELECT id, asset_code FROM assets WHERE id != $id ORDER BY asset_code");
+$asset_list = $conn->query("
+    SELECT a.id, a.asset_code, an.name AS asset_name, r.room_no 
+    FROM assets a 
+    LEFT JOIN asset_names an ON a.asset_name_id = an.id 
+    LEFT JOIN rooms r ON a.room_id = r.id 
+    WHERE a.id != $id 
+    ORDER BY a.asset_code
+");
 
 include __DIR__ . '/../../partials/header.php';
 ?>
@@ -210,9 +217,16 @@ include __DIR__ . '/../../partials/header.php';
                     <option value="">None</option>
                     <?php while ($p = $asset_list->fetch_assoc()):
                         $selected = ($asset['parent_asset_id'] == $p['id']) ? 'selected' : '';
+                        $displayName = $p['asset_code'];
+                        if (!empty($p['asset_name'])) {
+                            $displayName .= ' - ' . $p['asset_name'];
+                        }
+                        if (!empty($p['room_no'])) {
+                            $displayName .= ' [Room: ' . $p['room_no'] . ']';
+                        }
                     ?>
                         <option value="<?= (int)$p['id'] ?>" <?= $selected ?>>
-                            <?= htmlspecialchars($p['asset_code']) ?>
+                            <?= htmlspecialchars($displayName) ?>
                         </option>
                     <?php endwhile; ?>
                 </select>

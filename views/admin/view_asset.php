@@ -198,7 +198,7 @@ include __DIR__ . '/../partials/header.php';
                         <?= htmlspecialchars($asset['building']) ?> Building &bull; <?= htmlspecialchars($asset['floor']) ?> &bull; <?= htmlspecialchars($asset['room_type']) ?>
                     </div>
                     <div style="margin-top: 12px;">
-                        <a href="<?= BASE_URL ?>views/admin/forms/move_asset.php?id=<?= $asset['id'] ?>" class="btn small outline">
+                        <a href="<?= BASE_URL ?>views/admin/forms/move_asset.php?asset_id=<?= $asset['id'] ?>" class="btn small outline">
                             <i class="fas fa-exchange-alt"></i> Relocate Asset
                         </a>
                     </div>

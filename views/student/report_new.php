@@ -39,7 +39,65 @@ ensure_role(['student','faculty']);
 $error = '';
 $error = '';
 $ok = '';
-$qr_id = $_GET['qr_id'] ?? '';
+$qr_id = trim($_GET['qr_id'] ?? $_GET['asset_id'] ?? '');
+
+// --- PRE-FETCH LOGIC FOR PARENT COMPONENT VERIFICATION ---
+$prefetched_parent_js = "null";
+if (!empty($qr_id)) {
+    // Determine if $qr_id is ID (numeric) or code (string)
+    $q_type = is_numeric($qr_id) ? "a.id = ?" : "a.asset_code = ?";
+    
+    // SQL query using LEFT JOIN to get parent details and faculty
+    $prefetch_q = $conn->prepare("
+        SELECT 
+            a.id as child_id, a.asset_code as child_code,
+            pa.id as parent_id, pa.asset_code as parent_code, an.name as parent_name,
+            a.room_id, ra.faculty_id
+        FROM assets a
+        INNER JOIN assets pa ON a.parent_asset_id = pa.id
+        LEFT JOIN asset_names an ON pa.asset_name_id = an.id
+        LEFT JOIN room_assignments ra ON a.room_id = ra.room_id
+        WHERE $q_type
+    ");
+    
+    if (is_numeric($qr_id)) {
+        $prefetch_val = (int)$qr_id;
+        $prefetch_q->bind_param("i", $prefetch_val);
+    } else {
+        $prefetch_q->bind_param("s", $qr_id);
+    }
+    
+    $prefetch_q->execute();
+    $prefetch_res = $prefetch_q->get_result();
+    $prefetch_data = $prefetch_res->fetch_assoc();
+    
+    if ($prefetch_data && $prefetch_data['parent_id']) {
+        // We found a parent asset!
+        $prefetched_parent_js = json_encode([
+            'child_code' => $prefetch_data['child_code'],
+            'parent_code' => $prefetch_data['parent_code'],
+            'parent_name' => $prefetch_data['parent_name'] ?? 'Parent Asset',
+            'faculty_id' => $prefetch_data['faculty_id']
+        ]);
+        
+        // If the user scanned an ID, we want the form to use the actual code
+        $qr_id = $prefetch_data['child_code']; 
+    } elseif ($prefetch_data === null) {
+        // If it was just a regular asset (no parent) but was ID-based, still resolve to code
+        $resolve_q = $conn->prepare("SELECT asset_code FROM assets a WHERE $q_type");
+        if (is_numeric($qr_id)) {
+            $resolve_val = (int)$qr_id;
+            $resolve_q->bind_param("i", $resolve_val);
+        } else {
+            $resolve_q->bind_param("s", $qr_id);
+        }
+        $resolve_q->execute();
+        $resolve_res = $resolve_q->get_result()->fetch_assoc();
+        if ($resolve_res) {
+            $qr_id = $resolve_res['asset_code'];
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $is_ajax = isset($_POST['ajax']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
@@ -266,10 +324,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $n_asset_name = $notifyDetails['asset_name'] ?? 'Asset';
                 $n_room_no = $notifyDetails['room_no'] ?? 'Unknown';
                 
+                $manual_override_alert = (isset($_POST['manual_override_alert']) && $_POST['manual_override_alert'] == '1');
+                
                 $fac = $conn->query("SELECT faculty_id FROM room_assignments WHERE room_id = " . (int)$asset['room_id']);
                 while($f = $fac->fetch_assoc()) {
                     $msg = "⚠️ New Report: $n_asset_name in Room $n_room_no. Priority: $urgency_priority. Code ($asset_code)";
                     notify_user($conn, (int)$f['faculty_id'], $msg);
+                    
+                    if ($manual_override_alert) {
+                        $override_msg = "🚨 COMPONENT MISMATCH ALERT: A student manually opted to report an issue on a child component ($asset_code) instead of its Parent Machine in Room $n_room_no. Please verify if the main machine is affected.";
+                        notify_user($conn, (int)$f['faculty_id'], $override_msg);
+                    }
                 }
 
                 $admin_query = $conn->query("SELECT id FROM users WHERE role = 'admin'");
@@ -305,8 +370,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $rooms = $conn->query("SELECT id, building, floor, room_no FROM rooms ORDER BY building, floor, room_no");
 $assetNames = $conn->query("SELECT id, name FROM asset_names ORDER BY name");
 
+// Fetch active CPUs/Machines in Labs for the Parent Selection
+$cpu_query = "
+    SELECT 
+        a.asset_code, 
+        an.name AS asset_name, 
+        r.room_no
+    FROM assets a
+    JOIN asset_names an ON a.asset_name_id = an.id
+    JOIN rooms r ON a.room_id = r.id
+    WHERE r.room_type IN ('Lab', 'Laboratory')
+      AND an.name LIKE '%CPU%'
+      AND a.status != 'Retired'
+    ORDER BY r.room_no ASC, a.asset_code ASC
+";
+$cpu_assets_res = $conn->query($cpu_query);
+
 include __DIR__ . '/../partials/header.php';
 ?>
+
+<!-- Add SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
 <script>
 function playAchievementSound() {
@@ -337,6 +422,7 @@ function playAchievementSound() {
 
     <form method="post" enctype="multipart/form-data" id="reportForm">
         <?= get_csrf_input() ?>
+        <input type="hidden" name="manual_override_alert" id="manual_override_alert" value="0">
         
         <div style="margin-bottom: 15px;">
             <label style="color: #ccc; font-size: 0.9em; margin-bottom: 5px; display: block;">Room</label>
@@ -392,9 +478,26 @@ function playAchievementSound() {
         <div id="cpu-id-container" style="display:none; margin-bottom: 15px;">
             <label style="color: #ccc; font-size: 0.9em; margin-bottom: 5px; display: block;">CPU ID <span style="color:#e74c3c">*</span></label>
             <div class="input-group">
-                <input class="input-dark" name="cpu_id" id="cpu_id" placeholder="Enter CPU ID">
+                <select class="input-dark" name="cpu_id" id="cpu_id" style="appearance: none; -webkit-appearance: none; cursor: pointer;">
+                    <option value="">Select Parent CPU</option>
+                    <?php 
+                    if ($cpu_assets_res && $cpu_assets_res->num_rows > 0) {
+                        // Reset pointer just in case
+                        $cpu_assets_res->data_seek(0);
+                        while ($cpu = $cpu_assets_res->fetch_assoc()) {
+                            $selected = (isset($_POST['cpu_id']) && $_POST['cpu_id'] == $cpu['asset_code']) ? 'selected' : '';
+                            $display_text = htmlspecialchars($cpu['asset_code'] . ' - ' . $cpu['asset_name'] . ' [Room: ' . $cpu['room_no'] . ']');
+                            echo "<option value=\"" . htmlspecialchars($cpu['asset_code']) . "\" {$selected}>{$display_text}</option>";
+                        }
+                    }
+                    ?>
+                </select>
                 <i class="fa-solid fa-microchip"></i>
+                <i class="fa-solid fa-chevron-down" style="left: auto; right: 16px;"></i>
             </div>
+            <small style="color: rgba(255,255,255,0.5); display: block; margin-top: 5px;">
+                Required only if reporting an independent component.
+            </small>
         </div>
         
         <div style="margin-bottom: 15px;">
@@ -489,8 +592,55 @@ function playAchievementSound() {
     </div>
 </div>
 
+</div>
+
+<!-- Custom Confirm Modal -->
+<div id="customConfirmModal" class="modal" style="display:none; align-items: center; justify-content: center; z-index: 1050;">
+    <div class="glass-card modal-content" style="border: 1px solid rgba(110, 168, 254, 0.3); background: rgba(16, 21, 49, 0.95); max-width: 450px; padding: 25px; border-radius: 12px; box-shadow: 0 15px 40px rgba(0,0,0,0.6);">
+        <h3 style="color: white; margin-bottom: 5px;"><i class="fa-solid fa-circle-question" style="color: #6ea8fe; margin-right: 8px;"></i> Verification Required</h3>
+        <p id="customConfirmMessage" style="color: #ccc; font-size: 0.95em; line-height: 1.5; margin-bottom: 25px;">Message goes here</p>
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="customConfirmNo" class="btn-login" style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); flex: 1; padding: 10px;">No, keep component</button>
+            <button id="customConfirmYes" class="btn-login" style="flex: 1; padding: 10px;">Yes, report main PC</button>
+        </div>
+    </div>
+</div>
+
 <script src="<?= BASE_URL ?>assets/js/offline-db.js"></script>
 <script>
+// Promise-based Custom Confirm (No longer used for parent check, but kept for potential future use or generic confirms)
+function showConfirmModal(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customConfirmModal');
+        const msgEl = document.getElementById('customConfirmMessage');
+        const btnYes = document.getElementById('customConfirmYes');
+        const btnNo = document.getElementById('customConfirmNo');
+        
+        msgEl.innerText = message;
+        modal.style.display = 'flex'; 
+        
+        const cleanup = () => {
+            modal.style.display = 'none';
+            btnYes.removeEventListener('click', onYes);
+            btnNo.removeEventListener('click', onNo);
+            window.removeEventListener('click', onOutsideClick);
+        };
+        
+        const onYes = () => { cleanup(); resolve(true); };
+        const onNo = () => { cleanup(); resolve(false); };
+        const onOutsideClick = (e) => {
+            if (e.target === modal) {
+                cleanup(); resolve(false);
+            }
+        };
+        
+        btnYes.addEventListener('click', onYes);
+        btnNo.addEventListener('click', onNo);
+        window.addEventListener('click', onOutsideClick);
+    });
+}
+
 const USER_ROLE = "<?php echo $_SESSION['user']['role']; ?>";
 
 <?php if ($error === 'DUPLICATE_REPORT'): ?>
@@ -499,14 +649,20 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 <?php endif; ?>
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const reportForm = document.getElementById('reportForm');
+    const prefetchedParent = <?= $prefetched_parent_js ?>;
     
     // Autoplay scanned QR code if provided in URL
     const scannedQrId = "<?= htmlspecialchars($qr_id) ?>";
-    if (scannedQrId) {
-        document.getElementById('asset_code').value = scannedQrId;
-        // Trigger verification logic explicitly
+    const hasSuccessMessage = <?= !empty($ok) ? 'true' : 'false' ?>;
+    const hasErrorMessage = <?= !empty($error) ? 'true' : 'false' ?>;
+    
+    // Only auto-trigger if there is a QR ID AND we did not just submit (success or error)
+    if (scannedQrId && !hasSuccessMessage && !hasErrorMessage) {
+        const input = document.getElementById('asset_code');
+        input.value = scannedQrId;
+        
         if (typeof verifyAssetCode === 'function') {
             verifyAssetCode(scannedQrId);
         }
@@ -899,6 +1055,9 @@ document.addEventListener('click', function(e) {
 
 async function verifyAssetCode(code) {
     if (!code || code === 'MISSING_STICKER') return;
+    
+    // Aggressively close the custom dropdown to prevent UI overlapping
+    document.getElementById('custom-dropdown').classList.remove('show');
 
     try {
         const formData = new FormData();
@@ -915,7 +1074,7 @@ async function verifyAssetCode(code) {
         const data = await response.json();
         
         if (data.exists) {
-            // Prevent showing modal again if we just processed this code
+            // ALWAYS Autofill Room and Asset Name BEFORE showing the modal
             if (lastProcessedCode !== code) {
                 isAutoFilling = true;
                 lastProcessedCode = code; // Mark as processed
@@ -923,24 +1082,154 @@ async function verifyAssetCode(code) {
                 const roomSelect = document.getElementById('room_id');
                 const nameSelect = document.getElementById('asset_name_id');
                 
-                // Set Name first
-                if (data.asset_name_id) nameSelect.value = data.asset_name_id;
+                // Set Name first (from data.asset)
+                if (data.asset && data.asset.asset_name_id) nameSelect.value = data.asset.asset_name_id;
                 
-                // Set Room
-                if (data.room_id) roomSelect.value = data.room_id;
+                // Set Room (from data.asset)
+                if (data.asset && data.asset.room_id) roomSelect.value = data.asset.room_id;
                 
                 isAutoFilling = false;
+                
+                // Trigger fetch to populate local arrays properly
+                fetchRoomAssets().then(() => {
+                    // Force close dropdown again just in case fetchRoomAssets re-opens it
+                    document.getElementById('custom-dropdown').classList.remove('show');
+                });
             }
 
+            // ALWAYS Autofill the CPU ID if a parent exists
             const cpuContainer = document.getElementById('cpu-id-container');
             const cpuInput = document.getElementById('cpu_id');
             if (data.has_parent) {
                 cpuContainer.style.display = 'block';
                 cpuInput.required = true;
+                // Auto-fill CPU ID with parent code!
+                if (data.parent && data.parent.code) {
+                    cpuInput.value = data.parent.code;
+                }
             } else {
                 cpuContainer.style.display = 'none';
                 cpuInput.required = false;
+                cpuInput.value = '';
             }
+
+            // Initial Asset Verification Popup (Using SweetAlert2)
+            if (!window.initialVerificationShown) {
+                window.initialVerificationShown = true;
+                
+                const assetNameDisplay = data.asset.name || 'Unknown Asset';
+                const roomDisplay = data.asset.room_no || 'Unknown Room';
+                const conditionStr = data.asset.status || 'Good';
+                
+                // Color formatting based on condition
+                let condColor = '#2ecc71';
+                if (conditionStr === 'Needs Repair') condColor = '#e74c3c';
+                else if (conditionStr === 'Under Maintenance') condColor = '#f39c12';
+                else if (conditionStr === 'Missing') condColor = '#9b59b6';
+                
+                const htmlContent = `
+                    <div style="text-align: left; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: 10px;">
+                        <p style="margin: 5px 0;"><strong>Code:</strong> <span style="color:#6ea8fe;">${code}</span></p>
+                        <p style="margin: 5px 0;"><strong>Name:</strong> <span style="color:#fff;">${assetNameDisplay}</span></p>
+                        <p style="margin: 5px 0;"><strong>Room:</strong> <span style="color:#ccc;">${roomDisplay}</span></p>
+                        <p style="margin: 5px 0;"><strong>Condition:</strong> <span style="color:${condColor}; font-weight:bold;">${conditionStr}</span></p>
+                    </div>
+                `;
+                
+                const result = await Swal.fire({
+                    title: 'Verify Asset Details',
+                    html: htmlContent,
+                    icon: 'info',
+                    showCancelButton: true,
+                    confirmButtonColor: '#6ea8fe',
+                    cancelButtonColor: '#333',
+                    confirmButtonText: 'Yes, report this asset',
+                    cancelButtonText: 'Cancel',
+                    background: '#101531',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'glass-card border-glow',
+                        title: 'swal-title-white'
+                    }
+                });
+
+                if (!result.isConfirmed) {
+                    // User Cancelled - Clear fields and abort
+                    resetAutoFill('all');
+                    document.getElementById('asset_code').value = '';
+                    window.initialVerificationShown = false; // Reset flag to allow rescanning
+                    return; 
+                }
+            }
+
+
+            // Positional Tracking: Ask which CPU the child is currently connected to
+            if (data.has_parent && !window.overrideAlertShown) {
+                window.overrideAlertShown = true;
+                
+                // 1. Scrape existing CPU options from the DOM dropdown
+                const cpuSelectEl = document.getElementById('cpu_id');
+                let cpuOptions = {};
+                Array.from(cpuSelectEl.options).forEach(opt => {
+                    if (opt.value) { // Skip empty placeholder
+                        cpuOptions[opt.value] = opt.text;
+                    }
+                });
+
+                // 2. Fire SweetAlert Dropdown
+                const { value: selectedCpu } = await Swal.fire({
+                    title: 'Current Connection',
+                    html: `This component is normally connected to <strong>${data.parent.code}</strong>.<br><br>Which CPU is it plugged into right now?`,
+                    icon: 'question',
+                    input: 'select',
+                    inputOptions: cpuOptions,
+                    inputPlaceholder: 'Select Current CPU',
+                    inputValue: data.parent.code || '', // Pre-select assigned parent if exists
+                    showCancelButton: true,
+                    confirmButtonColor: '#6ea8fe',
+                    cancelButtonColor: '#333',
+                    confirmButtonText: 'Confirm Location',
+                    background: '#101531',
+                    color: '#fff',
+                    didOpen: () => {
+                        const selectEl = Swal.getInput();
+                        if (selectEl) {
+                            selectEl.style.cssText += 'margin: 15px auto !important; display: block !important; width: 85% !important; padding: 10px 35px 10px 10px !important; text-align: center; background-position: right 10px center; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat;';
+                        }
+                    },
+                    customClass: {
+                        popup: 'glass-card border-glow',
+                        title: 'swal-title-white',
+                        input: 'input-dark'
+                    },
+                    inputValidator: (value) => {
+                        return new Promise((resolve) => {
+                            if (value) {
+                                resolve();
+                            } else {
+                                resolve('You must select the currently connected CPU');
+                            }
+                        });
+                    }
+                });
+
+                if (selectedCpu) {
+                    // Update CPU ID field with their real-time selection
+                    cpuSelectEl.value = selectedCpu;
+                    
+                    // DO NOT lock the main asset code, this is reporting the component itself!
+                    document.getElementById('manual_override_alert').value = '1'; // Flag that this is a component report
+                } else {
+                    // Cancelled parent physical selection - abort reporting entirely
+                    resetAutoFill('all');
+                    document.getElementById('asset_code').value = '';
+                    window.initialVerificationShown = false; 
+                    window.overrideAlertShown = false;
+                    return;
+                }
+            }
+
+            // (Handled above, removed redundant logic)
         }
     } catch (e) {
         console.error('Validation failed', e);
@@ -957,6 +1246,12 @@ document.getElementById('asset_code').addEventListener('blur', function() {
 function resetAutoFill(source) {
     if (isAutoFilling) return;
     
+    window.overrideAlertShown = false;
+    window.initialVerificationShown = false; // Reset the SweetAlert verification flag
+    document.getElementById('manual_override_alert').value = '0';
+    document.getElementById('asset_code').classList.remove('highlight-locked');
+    document.getElementById('asset_code').readOnly = false;
+    
     // Clear the input and dropdown
     const input = document.getElementById('asset_code');
     input.value = '';
@@ -968,8 +1263,19 @@ function resetAutoFill(source) {
     }
     
     document.getElementById('cpu-id-container').style.display = 'none';
-    document.getElementById('cpu_id').required = false;
+    const cpuInput = document.getElementById('cpu_id');
+    cpuInput.required = false;
+    cpuInput.value = '';
+    cpuInput.readOnly = false;
+    cpuInput.classList.remove('highlight-locked');
     document.getElementById('desc-label').innerHTML = 'Description';
+    
+    // Auto-fill trigger if both dropdowns are selected
+    const roomVal = document.getElementById('room_id').value;
+    const nameVal = document.getElementById('asset_name_id').value;
+    if (roomVal && nameVal) {
+        fetchRoomAssets();
+    }
 }
 
 window.onclick = function(event) {
@@ -978,19 +1284,6 @@ window.onclick = function(event) {
     }
 }
 
-// Auto-trigger from QR Code
-document.addEventListener('DOMContentLoaded', function() {
-    const qrId = "<?= htmlspecialchars($qr_id) ?>";
-    const hasSuccessMessage = <?= !empty($ok) ? 'true' : 'false' ?>;
-    const hasErrorMessage = <?= !empty($error) ? 'true' : 'false' ?>;
-    
-    // Only auto-trigger if there is a QR ID AND we did not just submit (success or error)
-    if (qrId && !hasSuccessMessage && !hasErrorMessage) {
-        const input = document.getElementById('asset_code');
-        input.value = qrId;
-        verifyAssetCode(qrId);
-    }
-});
 </script>
 
 <style>

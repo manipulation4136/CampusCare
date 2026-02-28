@@ -88,6 +88,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = event.request.url;
 
+  // --- BYPASS LOCALHOST ---
+  if (url.includes('localhost') || url.includes('127.0.0.1')) {
+    return;
+  }
+
 
 
   // --- STRATEGY 1: ADMIN & FACULTY (Network Only -> Offline Page) ---
@@ -233,11 +238,11 @@ async function syncPendingReports() {
 
       if (response.ok) {
         const res = await response.json();
-        if (res.success || res.error === 'DUPLICATE_REPORT') {
-    await deleteReport(report.id);
-} else {
-    console.error('Server returned error for report:', report.id, res);
-}
+        if (res.success) {
+          await deleteReport(report.id);
+        } else {
+          console.error('Server returned error for report:', report.id, res);
+        }
       } else {
         console.error('Network response was not ok for report:', report.id);
       }
@@ -367,4 +372,3 @@ function deleteReport(id) {
   });
 
 }
-

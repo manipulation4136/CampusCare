@@ -463,37 +463,91 @@ document.addEventListener("DOMContentLoaded", function() {
         const viewfinder = document.querySelector('.viewfinder-mask');
         if (viewfinder) viewfinder.style.display = 'block';
 
-        // Check WebRTC support before starting
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            handleCameraFallback("Your browser does not support live camera scanning.");
-            return;
-        }
+        // Clear any previous error messages in the reader to prevent duplication
+        const qrReader = document.getElementById("qr-reader");
+        if (qrReader) qrReader.innerHTML = '';
 
         html5QrCode = new Html5Qrcode("qr-reader");
-        
-        // Start live camera scanning
-        html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-            onScanSuccess,
-            (errorMessage) => {
-                // Ignore continuously failing frames
+
+        async function initCamera() {
+            try {
+                // 1. Context Security Check for WebRTC
+                if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                    throw new Error("Security Error: WebRTC camera access requires HTTPS or localhost.");
+                }
+
+                // 2. MediaDevices API Support Check
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("Unsupported: Your browser does not support live camera scanning.");
+                }
+
+                // 3. Pre-flight permission and availability check strictly requesting rear camera
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
+                } catch (e) {
+                    // Fall back to general environment camera if exact strictly fails (some devices don't support exact)
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                }
+
+                // Release stream so Html5Qrcode can safely acquire it
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+
+                // 4. Start actual decoding using Html5Qrcode
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+                    onScanSuccess,
+                    (errorMessage) => { /* Ignore frame-level errors */ }
+                );
+
+                isScanning = true;
+                setStatus('ready', 'Ready to Scan');
+
+            } catch (err) {
+                console.error("[Camera Init Error]", err);
+                
+                let userFriendlyMsg = "Live camera access failed or is unsupported. Please use the file upload fallback.";
+                if (err.name === 'NotAllowedError') {
+                    userFriendlyMsg = "Permission Denied: Please allow camera access in your browser settings to scan.";
+                } else if (err.name === 'NotFoundError') {
+                    userFriendlyMsg = "No Camera Found: We couldn't detect a usable camera on this device.";
+                } else if (err.message && err.message.includes("Security")) {
+                    userFriendlyMsg = err.message;
+                }
+
+                handleCameraFallback(userFriendlyMsg);
             }
-        ).then(() => {
-            isScanning = true;
-            setStatus('ready', 'Ready to Scan');
-        }).catch((err) => {
-            console.error("Camera start error:", err);
-            handleCameraFallback("Live camera access denied or unsupported.");
-        });
+        }
+        
+        initCamera();
     });
 
     function handleCameraFallback(errorMsg) {
         setStatus('error', 'Camera Unavailable');
         if (laserLine) laserLine.style.display = 'none';
         
-        // Remove the intrusive error message generation
-        // Keep the viewfinder visible for a cleaner aesthetic
+        const qrReader = document.getElementById("qr-reader");
+        if (qrReader) {
+            qrReader.innerHTML = `
+                <div style="padding: 24px; text-align: center; color: #ff9e93; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; box-sizing: border-box; background: rgba(231,76,60,0.05); border-radius: 12px; border: 1px dashed rgba(231,76,60,0.3); width: 100%;">
+                    <i class="fas fa-video-slash" style="font-size: 32px; margin-bottom: 12px; opacity: 0.8;"></i>
+                    <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5; font-weight: 500;">${errorMsg}</p>
+                    <label class="upload-btn" style="background: rgba(231,76,60,0.1); border-color: rgba(231,76,60,0.4); color: #ff9e93; margin: 0; cursor: pointer; width: auto; display: inline-flex;">
+                        <i class="fas fa-folder-open"></i> Use File Upload Fallback
+                        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="
+                            const parentInput = document.getElementById('qr-upload-input');
+                            if (parentInput) {
+                                parentInput.files = this.files;
+                                parentInput.dispatchEvent(new Event('change', {bubbles: true}));
+                            }
+                        ">
+                    </label>
+                </div>
+            `;
+        }
     }
 
     /* ── Handle Static File Upload ── */

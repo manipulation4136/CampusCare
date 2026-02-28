@@ -30,16 +30,19 @@ try {
         SELECT 
             a.id, 
             a.asset_code, 
+            a.status,
             an.name AS asset_name,
             c.name AS category_name,
             a.parent_asset_id,
             a.room_id,
+            r.room_no,
             a.asset_name_id,
             p.asset_code AS parent_code,
             pan.name AS parent_name
         FROM assets a
         JOIN asset_names an ON a.asset_name_id = an.id
         LEFT JOIN categories c ON a.category_id = c.id
+        LEFT JOIN rooms r ON a.room_id = r.id
         LEFT JOIN assets p ON a.parent_asset_id = p.id
         LEFT JOIN asset_names pan ON p.asset_name_id = pan.id
         WHERE a.asset_code = ?
@@ -63,6 +66,8 @@ try {
                 'name' => $asset['asset_name'],
                 'category' => $asset['category_name'],
                 'room_id' => $asset['room_id'],
+                'room_no' => $asset['room_no'],
+                'status' => $asset['status'],
                 'asset_name_id' => $asset['asset_name_id']
             ]
         ];

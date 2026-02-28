@@ -70,9 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Fetch dropdown data
 $rooms = $conn->query("SELECT id, building, floor, room_no FROM rooms ORDER BY building, floor, room_no");
 $asset_list = $conn->query("
-    SELECT a.id, a.asset_code, an.name AS asset_name 
+    SELECT a.id, a.asset_code, an.name AS asset_name, r.room_no 
     FROM assets a 
-    LEFT JOIN asset_names an ON a.asset_name_id = an.id 
+    INNER JOIN asset_names an ON a.asset_name_id = an.id 
+    INNER JOIN rooms r ON a.room_id = r.id 
+    WHERE r.room_type IN ('Lab', 'Laboratory') 
+      AND an.name LIKE '%CPU%'
     ORDER BY a.asset_code
 ");
 
@@ -194,6 +197,9 @@ include __DIR__ . '/../../partials/header.php';
                         $displayName = $p['asset_code'];
                         if (!empty($p['asset_name'])) {
                             $displayName .= ' - ' . $p['asset_name'];
+                        }
+                        if (!empty($p['room_no'])) {
+                            $displayName .= ' [Room: ' . $p['room_no'] . ']';
                         }
                     ?>
                         <option value="<?= (int)$p['id'] ?>" <?= $selected ?>>

@@ -43,6 +43,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Check for pre-filled asset
+$prefilled_asset = null;
+$asset_id = isset($_GET['asset_id']) ? (int)$_GET['asset_id'] : 0;
+if ($asset_id) {
+    $stmt = $conn->prepare("
+        SELECT a.asset_code, an.name as asset_name 
+        FROM assets a 
+        JOIN asset_names an ON a.asset_name_id = an.id 
+        WHERE a.id = ?
+    ");
+    $stmt->bind_param("i", $asset_id);
+    $stmt->execute();
+    $prefilled_asset = $stmt->get_result()->fetch_assoc();
+}
+
 // Fetch Rooms for Dropdown
 $rooms = $conn->query("SELECT id, building, floor, room_no FROM rooms ORDER BY building, floor, room_no");
 
@@ -71,29 +86,35 @@ include __DIR__ . '/../../partials/header.php';
             <?= get_csrf_input() ?>
             
             <div style="margin-bottom: 16px;">
-                <label>Asset Code</label>
-                <div class="input-group">
-                    <input class="input" name="asset_code" list="asset_list" placeholder="Enter or search Asset Code" required value="<?= htmlspecialchars($_GET['code'] ?? '') ?>">
-                    <datalist id="asset_list">
-                        <?php
-                        $allAssets = $conn->query("SELECT asset_code FROM assets ORDER BY asset_code");
-                        while($a = $allAssets->fetch_assoc()): ?>
-                            <option value="<?= htmlspecialchars($a['asset_code']) ?>">
-                        <?php endwhile; ?>
-                    </datalist>
-                </div>
+                <label>Asset to Relocate</label>
+                <?php if ($prefilled_asset): ?>
+                    <!-- Read-only display for pre-filled asset -->
+                    <input type="text" class="input form-control input-dark" value="<?= htmlspecialchars($prefilled_asset['asset_code'] . ' - ' . $prefilled_asset['asset_name']) ?>" disabled style="background-color: rgba(255,255,255,0.05); color: #8fa0c9; cursor: not-allowed; border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="hidden" name="asset_code" value="<?= htmlspecialchars($prefilled_asset['asset_code']) ?>">
+                <?php else: ?>
+                    <div class="input-group">
+                        <input class="input form-control input-dark" name="asset_code" list="asset_list" placeholder="Enter or search Asset Code" required value="<?= htmlspecialchars($_GET['code'] ?? '') ?>">
+                        <datalist id="asset_list">
+                            <?php
+                            $allAssets = $conn->query("SELECT asset_code FROM assets ORDER BY asset_code");
+                            while($a = $allAssets->fetch_assoc()): ?>
+                                <option value="<?= htmlspecialchars($a['asset_code']) ?>">
+                            <?php endwhile; ?>
+                        </datalist>
+                    </div>
+                <?php endif; ?>
             </div>
 
             <div style="margin-bottom: 24px;">
-                <label>New Room</label>
-                <select class="input" name="new_room_id" required>
-                    <option value="">Select New Location</option>
+                <label>Target Room</label>
+                <select class="input form-control input-dark" name="new_room_id" required>
+                    <option value="">Select Target Location</option>
                     <?php 
                     $rooms->data_seek(0);
                     while ($r = $rooms->fetch_assoc()): 
                     ?>
                         <option value="<?= (int)$r['id'] ?>">
-                            <?= htmlspecialchars($r['building'] . '/' . $r['floor'] . '/' . $r['room_no']) ?>
+                            <?= htmlspecialchars($r['building'] . ' - Floor ' . $r['floor'] . ' - Room ' . $r['room_no']) ?>
                         </option>
                     <?php endwhile; ?>
                 </select>

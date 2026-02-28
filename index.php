@@ -64,14 +64,27 @@ require_once __DIR__ . '/config/init.php';
         }
 
         // --- OFFLINE LOGIC ---
-        if (!isOnline) {
+        // --- OFFLINE LOGIC ---
+        const isLocalhost = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+
+        // Clean up SW on localhost
+        if (isLocalhost) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister();
+                    console.log("Service Worker Unregistered on Localhost");
+                }
+            });
+        }
+
+        if (!isOnline && !isLocalhost) {
             if (isLoggedIn === 'true' && role === 'student') {
                 window.location.replace('views/student/dashboard.php');
             } else {
                 window.location.replace('offline.php');
             }
         } 
-        // --- ONLINE LOGIC ---
+        // --- ONLINE LOGIC (or Localhost) ---
         else {
             if (isLoggedIn === 'true') {
                 // Redirecting... Keep loader visible
