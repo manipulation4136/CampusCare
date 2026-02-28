@@ -14,3 +14,4 @@ Telegram Response (Code 404): {"ok":false,"error_code":404,"description":"Not Fo
 Telegram Response (Code 404): {"ok":false,"error_code":404,"description":"Not Found"}
 Telegram Response (Code 404): {"ok":false,"error_code":404,"description":"Not Found"}
 Telegram Response (Code 404): {"ok":false,"error_code":404,"description":"Not Found"}
+Telegram cURL Error: Resolving timed out after 5012 millisecondsTelegram Response (Code 404): {"ok":false,"error_code":404,"description":"Not Found"}

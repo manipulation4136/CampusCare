@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Strict Backend Validation
     $valid_buildings = ['Main', 'Science Block', 'Arts Block', 'Library', 'Hostel A', 'Hostel B', 'Sports Complex', 'Admin Block'];
-    $valid_floors = ['0', '1', '2', '3', '4'];
+    $valid_floors = range(1, 20);
 
     if (!in_array($building, $valid_buildings)) {
         set_flash('err', 'Invalid Building selected.');
@@ -105,9 +105,8 @@ include __DIR__ . '/../../partials/header.php';
                 <select class="input" name="floor" required>
                     <option value="">Select Floor</option>
                     <?php
-                    $floors = ['0', '1', '2', '3', '4'];
-                    foreach($floors as $f) {
-                        echo '<option value="' . htmlspecialchars($f) . '">' . htmlspecialchars($f) . '</option>';
+                    for ($f = 1; $f <= 20; $f++) {
+                        echo '<option value="' . $f . '">' . $f . '</option>';
                     }
                     ?>
                 </select>
@@ -115,7 +114,29 @@ include __DIR__ . '/../../partials/header.php';
             
             <div>
                 <label>Room No <span style="color: #e74c3c;">*</span></label>
-                <input class="input" name="room_no" required pattern="[A-Za-z0-9-]+" title="Only letters, numbers, and hyphens allowed (e.g., 101, A-102)" placeholder="e.g. 101 or A-102" oninput="this.value = this.value.toUpperCase()">
+                <select class="input" name="room_no" required>
+                    <option value="">Select Room No</option>
+                    <?php
+                    $room_options = [];
+                    $prefixes = ['', 'A-', 'B-', 'C-'];
+                    for ($f = 1; $f <= 20; $f++) {
+                        for ($i = 0; $i <= 15; $i++) {
+                            // Example: Floor 1, i = 0 => 100. Floor 2, i = 5 => 205.
+                            $num = $f . sprintf('%02d', $i);
+                            foreach ($prefixes as $p) {
+                                $room_options[] = $p . $num;
+                            }
+                        }
+                    }
+                    $specials = ['LAB-01', 'LAB-02', 'LIB-01', 'AUD-01', 'CONF-01', 'STAFF-01', 'OFFICE-01'];
+                    $room_options = array_merge($room_options, $specials);
+                    sort($room_options);
+                    
+                    foreach($room_options as $rn) {
+                        echo '<option value="' . htmlspecialchars($rn) . '">' . htmlspecialchars($rn) . '</option>';
+                    }
+                    ?>
+                </select>
             </div>
             
             <div>

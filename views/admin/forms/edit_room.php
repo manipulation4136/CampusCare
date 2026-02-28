@@ -104,13 +104,50 @@ include __DIR__ . '/../../partials/header.php';
             </div>
             
             <div>
-                <label>Floor</label>
-                <input class="input" name="floor" value="<?= htmlspecialchars($room['floor']) ?>">
+                <select class="input" name="floor">
+                    <option value="">Select Floor</option>
+                    <?php
+                    for ($f = 1; $f <= 20; $f++) {
+                        $selected = ((string)$room['floor'] === (string)$f) ? 'selected' : '';
+                        echo '<option value="' . $f . '" ' . $selected . '>' . $f . '</option>';
+                    }
+                    ?>
+                </select>
             </div>
             
             <div>
                 <label>Room No <span style="color: #e74c3c;">*</span></label>
-                <input class="input" name="room_no" required value="<?= htmlspecialchars($room['room_no']) ?>">
+                <select class="input" name="room_no" required>
+                    <option value="">Select Room No</option>
+                    <?php
+                    $room_options = [];
+                    $prefixes = ['', 'A-', 'B-', 'C-'];
+                    for ($f = 1; $f <= 20; $f++) {
+                        for ($i = 0; $i <= 15; $i++) {
+                            // Example: Floor 1, i = 0 => 100. Floor 2, i = 5 => 205.
+                            $num = $f . sprintf('%02d', $i);
+                            foreach ($prefixes as $p) {
+                                $room_options[] = $p . $num;
+                            }
+                        }
+                    }
+                    $specials = ['LAB-01', 'LAB-02', 'LIB-01', 'AUD-01', 'CONF-01', 'STAFF-01', 'OFFICE-01'];
+                    $room_options = array_merge($room_options, $specials);
+                    
+                    // Always ensure current room_no is in the list
+                    $current_room = $room['room_no'];
+                    if (!in_array($current_room, $room_options)) {
+                        $room_options[] = $current_room;
+                    }
+                    
+                    sort($room_options);
+                    
+                    foreach($room_options as $rn) {
+                        $selected = (strcasecmp($current_room, $rn) === 0) ? 'selected' : '';
+                        echo '<option value="' . htmlspecialchars($rn) . '" ' . $selected . '>' . htmlspecialchars($rn) . '</option>';
+                    }
+                    ?>
+                </select>
             </div>
             
             <div>

@@ -576,9 +576,23 @@ document.addEventListener("DOMContentLoaded", function() {
                 onScanSuccess(qrCodeMessage);
             })
             .catch(err => {
-                setStatus('error', 'No QR Code Found');
                 uploadInput.value = ''; // Reset input to allow re-upload of same file
-                setTimeout(() => setStatus('ready', isScanning ? 'Ready to Scan' : 'Camera Stopped'), 3000);
+                
+                if (html5QrCode) {
+                    html5QrCode.clear();
+                }
+                
+                setStatus('ready', isScanning ? 'Ready to Scan' : 'Camera Stopped');
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Scan Failed',
+                    text: 'No valid QR code detected in the uploaded image. Please try a clearer image or use the live camera.',
+                    background: '#1a2235',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c',
+                    customClass: { popup: 'swal-dark-popup' }
+                });
             });
     });
 

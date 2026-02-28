@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 10, 2026 at 08:44 AM
+-- Generation Time: Feb 28, 2026 at 05:01 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -40,23 +40,6 @@ CREATE TABLE `assets` (
   `added_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `assets`
---
-
-INSERT INTO `assets` (`id`, `asset_code`, `asset_name_id`, `category_id`, `room_id`, `parent_asset_id`, `status`, `warranty_end`, `dealer_id`, `added_at`) VALUES
-(49, 'WHITEBOARD-101-1', 20, 15, 11, NULL, 'Good', '2027-06-16', 2, '2025-09-20 04:48:24'),
-(50, 'CPU-205-1', 3, 16, 16, NULL, 'Good', '2026-09-17', 4, '2025-09-20 05:10:31'),
-(51, 'MONITOR-205-1', 17, 16, 16, 50, 'Good', '2027-02-16', 12, '2025-09-20 18:29:38'),
-(52, 'COMPUTER-101-1', 16, 13, 11, NULL, 'Good', '2026-10-07', 12, '2025-09-20 19:09:10'),
-(53, 'KEYBOARD-101-1', 18, 13, 11, NULL, 'Good', '2026-07-22', 12, '2025-09-20 19:20:44'),
-(54, 'CABINET-101-1', 23, 17, 11, 52, 'Good', '2222-02-22', 4, '2025-11-25 10:13:18'),
-(55, 'DOOR-101-1', 40, 13, 11, NULL, 'Good', '5555-05-05', 12, '2025-11-26 08:28:17'),
-(56, 'MONITOR-101-1', 17, 13, 11, NULL, 'Good', '2027-11-26', 12, '2025-11-26 09:40:32'),
-(58, 'CAMERA-101-1', 29, 17, 11, NULL, 'Good', '5555-04-04', 12, '2025-11-27 07:34:46'),
-(61, 'CABINET-201-1', 23, 17, 12, NULL, 'Good', '7777-07-07', 12, '2026-01-09 08:22:33'),
-(63, 'BENCH-101-1', 1, 15, 11, 54, 'Good', '4444-04-04', 12, '2026-01-10 12:35:11');
-
 -- --------------------------------------------------------
 
 --
@@ -68,32 +51,6 @@ CREATE TABLE `asset_names` (
   `name` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `asset_names`
---
-
-INSERT INTO `asset_names` (`id`, `name`, `created_at`) VALUES
-(1, 'bench', '2025-09-20 09:13:06'),
-(3, 'cpu', '2025-09-20 09:13:06'),
-(4, 'desk', '2025-09-20 09:13:06'),
-(5, 'fan', '2025-09-20 09:13:06'),
-(9, 'mouse', '2025-09-20 09:13:06'),
-(16, 'Computer', '2025-09-20 09:13:06'),
-(17, 'Monitor', '2025-09-20 09:13:06'),
-(18, 'Keyboard', '2025-09-20 09:13:06'),
-(19, 'Projector', '2025-09-20 09:13:06'),
-(20, 'Whiteboard', '2025-09-20 09:13:06'),
-(22, 'Table', '2025-09-20 09:13:06'),
-(23, 'Cabinet', '2025-09-20 09:13:06'),
-(24, 'Locker', '2025-09-20 09:13:06'),
-(25, 'Printer', '2025-09-20 09:13:06'),
-(27, 'Speaker', '2025-09-20 09:13:06'),
-(29, 'Camera', '2025-09-20 09:13:06'),
-(30, 'Laptop', '2025-09-20 09:13:06'),
-(36, 'Light', '2025-09-20 09:25:48'),
-(40, 'Door', '2025-11-13 05:03:35'),
-(43, 'SUPERMAN', '2026-01-08 14:48:49');
 
 -- --------------------------------------------------------
 
@@ -116,8 +73,7 @@ INSERT INTO `categories` (`id`, `name`) VALUES
 (15, 'Furniture & Fixtures'),
 (18, 'General Maintenance'),
 (16, 'Networking/IT'),
-(14, 'Plumbing'),
-(26, 'SUPERMAN');
+(14, 'Plumbing');
 
 -- --------------------------------------------------------
 
@@ -131,6 +87,7 @@ CREATE TABLE `damage_reports` (
   `reported_by` int(11) DEFAULT NULL,
   `issue_type` enum('Damage','Missing Sticker','Other') NOT NULL DEFAULT 'Damage',
   `description` text DEFAULT NULL,
+  `suggested_real_code` varchar(50) DEFAULT NULL,
   `image_path` varchar(255) DEFAULT NULL,
   `urgency_priority` enum('Critical','High','Medium','Low') NOT NULL DEFAULT 'Medium',
   `status` enum('pending','assigned','in_progress','completed','resolved') NOT NULL DEFAULT 'pending',
@@ -160,8 +117,7 @@ INSERT INTO `dealers` (`id`, `name`, `contact`) VALUES
 (2, 'Office Furniture Co', 'Priya Sharma - 9876543211'),
 (3, 'Lab Equipment India', 'Dr. Amit Singh - 9876543212'),
 (4, 'Digital Systems Ltd', 'Sarah Johnson - 9876543213'),
-(12, 'CampusCare Ltd', 'YaduKrishna -9856874598'),
-(14, 'SUPERMAN', '2255');
+(12, 'CampusCare Ltd', 'YaduKrishna -9856874598');
 
 -- --------------------------------------------------------
 
@@ -176,17 +132,6 @@ CREATE TABLE `exam_rooms` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `exam_rooms`
---
-
-INSERT INTO `exam_rooms` (`id`, `room_id`, `status_exam_ready`, `created_at`, `updated_at`) VALUES
-(5, 11, 'Yes', '2025-09-20 11:31:53', '2026-01-10 07:03:11'),
-(6, 12, 'Yes', '2025-09-20 11:32:28', '2026-01-10 06:58:58'),
-(7, 16, 'Yes', '2025-09-20 12:04:13', '2026-01-10 07:00:12'),
-(8, 17, 'Yes', '2025-11-24 05:49:28', NULL),
-(11, 20, 'Yes', '2026-01-08 15:09:06', NULL);
 
 -- --------------------------------------------------------
 
@@ -203,23 +148,6 @@ CREATE TABLE `notifications` (
   `is_read` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `notifications`
---
-
-INSERT INTO `notifications` (`id`, `asset_id`, `user_id`, `message`, `created_at`, `is_read`) VALUES
-(535, NULL, 15, '⚠️ New Report: Cabinet in Room 201 is damaged. Priority: Medium. Code (CABINET-201-1)', '2026-01-09 02:52:54', 0),
-(537, NULL, 17, '🔔 Update: Report for CABINET-201-1 is \'resolved\'.', '2026-01-09 04:00:02', 0),
-(538, NULL, 15, '⚠️ New Report: Cabinet in Room 201 is damaged. Priority: Medium. Code (CABINET-201-1)', '2026-01-09 04:09:33', 0),
-(540, NULL, 14, '⚠️ New Report: Monitor in Room 205 is damaged. Priority: Medium. Code (MONITOR-205-1)', '2026-01-09 04:12:04', 0),
-(542, NULL, 17, '🔔 Update: Report for CABINET-201-1 is \'pending\'.', '2026-01-09 04:54:02', 0),
-(543, NULL, 17, '🔔 Update: Report for CABINET-201-1 is \'resolved\'.', '2026-01-09 04:54:09', 0),
-(544, NULL, 15, '⚠️ New Report: Cabinet in Room 201 is damaged. Priority: Medium. Code (CABINET-201-1)', '2026-01-09 04:54:32', 0),
-(546, NULL, 14, '⚠️ New Report: Cabinet in Room 101 is damaged. Priority: Medium. Code (CABINET-101-1)', '2026-01-09 04:55:36', 0),
-(548, NULL, 17, '🔔 Update: Report for CABINET-101-1 is \'resolved\'.', '2026-01-10 06:58:39', 0),
-(549, NULL, 17, '🔔 Update: Report for CABINET-201-1 is \'resolved\'.', '2026-01-10 06:58:58', 0),
-(550, NULL, 17, '🔔 Update: Report for MONITOR-205-1 is \'resolved\'.', '2026-01-10 07:00:12', 0);
-
 -- --------------------------------------------------------
 
 --
@@ -234,21 +162,9 @@ CREATE TABLE `rooms` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `room_type` varchar(50) DEFAULT 'classroom',
   `capacity` int(11) DEFAULT NULL,
-  `notes` text DEFAULT NULL
+  `notes` text DEFAULT NULL,
+  `is_exam_eligible` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `rooms`
---
-
-INSERT INTO `rooms` (`id`, `building`, `floor`, `room_no`, `created_at`, `room_type`, `capacity`, `notes`) VALUES
-(11, 'Main', '1', '101', '2025-09-20 11:31:53', 'classroom', 30, 'Projecter ഇല'),
-(12, 'Main', '2', '201', '2025-09-20 11:32:28', 'classroom', 30, 'Projecter ഇല'),
-(14, 'Main', '2', '200', '2025-09-20 12:02:40', 'toilet', 3, 'Toilet ഉണ്ട്'),
-(15, 'Main', '1', '110', '2025-09-20 12:03:27', 'library', 20, 'Books ഉണ്ട്'),
-(16, 'Main', '1', '205', '2025-09-20 12:04:13', 'lab', 30, 'Projecter ഉണ്ട്'),
-(17, 'main', '2', '242', '2025-11-24 05:49:28', 'classroom', 34, 'sdf'),
-(20, 'super', '1', '2253', '2026-01-08 15:09:06', 'lab', 32, 'verthe');
 
 -- --------------------------------------------------------
 
@@ -263,14 +179,23 @@ CREATE TABLE `room_assignments` (
   `assigned_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `room_assignments`
+-- Table structure for table `system_cron_logs`
 --
 
-INSERT INTO `room_assignments` (`id`, `room_id`, `faculty_id`, `assigned_at`) VALUES
-(8, 11, 14, '2025-09-20 11:49:47'),
-(9, 12, 15, '2025-09-20 11:50:20'),
-(14, 16, 14, '2026-01-10 07:00:02');
+CREATE TABLE `system_cron_logs` (
+  `id` int(11) NOT NULL,
+  `last_run_date` date NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `system_cron_logs`
+--
+
+INSERT INTO `system_cron_logs` (`id`, `last_run_date`) VALUES
+(1, '2026-02-28');
 
 -- --------------------------------------------------------
 
@@ -322,8 +247,7 @@ CREATE TABLE `workers` (
 INSERT INTO `workers` (`worker_id`, `name`, `contact`, `category_id`, `created_at`) VALUES
 (11, 'Ananthu', '9856874598', 14, '2025-09-20 11:52:42'),
 (12, 'Shahil', '8856874598', 17, '2025-09-20 11:53:18'),
-(13, 'Govind', '9830474598', 18, '2025-09-20 11:54:22'),
-(15, 'SUPERMAN', '2255', 18, '2026-01-07 14:48:47');
+(13, 'Govind', '9830474598', 18, '2025-09-20 11:54:22');
 
 --
 -- Indexes for dumped tables
@@ -410,6 +334,12 @@ ALTER TABLE `room_assignments`
   ADD KEY `faculty_id` (`faculty_id`);
 
 --
+-- Indexes for table `system_cron_logs`
+--
+ALTER TABLE `system_cron_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -433,31 +363,31 @@ ALTER TABLE `workers`
 -- AUTO_INCREMENT for table `assets`
 --
 ALTER TABLE `assets`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
 
 --
 -- AUTO_INCREMENT for table `asset_names`
 --
 ALTER TABLE `asset_names`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `damage_reports`
 --
 ALTER TABLE `damage_reports`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=156;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=160;
 
 --
 -- AUTO_INCREMENT for table `dealers`
 --
 ALTER TABLE `dealers`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `exam_rooms`
@@ -469,7 +399,7 @@ ALTER TABLE `exam_rooms`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=551;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=578;
 
 --
 -- AUTO_INCREMENT for table `rooms`
@@ -481,7 +411,13 @@ ALTER TABLE `rooms`
 -- AUTO_INCREMENT for table `room_assignments`
 --
 ALTER TABLE `room_assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+
+--
+-- AUTO_INCREMENT for table `system_cron_logs`
+--
+ALTER TABLE `system_cron_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -493,7 +429,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `workers`
 --
 ALTER TABLE `workers`
-  MODIFY `worker_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `worker_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- Constraints for dumped tables

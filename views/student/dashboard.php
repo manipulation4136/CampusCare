@@ -33,6 +33,7 @@ if ($row = $res->fetch_assoc()) {
 include __DIR__.'/../partials/header.php';
 ?>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <div class="container" style="max-width: 600px; padding-bottom: 80px;">
     
@@ -418,8 +419,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 })
                 .catch(err => {
                     uploadInput.value = ''; // Reset input
-                    uploadLabel.innerHTML = '<i class="fas fa-exclamation-circle"></i> No QR Found';
-                    setTimeout(() => uploadLabel.innerHTML = originalText, 3000);
+                    uploadLabel.innerHTML = originalText;
+                    
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.clear();
+                    }
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Scan Failed',
+                        text: 'No valid QR code detected in the uploaded image. Please try a clearer image or use the live camera.',
+                        background: '#1a2235',
+                        color: '#fff',
+                        confirmButtonColor: '#e74c3c'
+                    });
                 });
         });
     }
