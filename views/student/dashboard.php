@@ -142,7 +142,7 @@ include __DIR__.'/../partials/header.php';
         <div class="upload-wrapper">
             <label class="upload-btn">
                 <i class="fas fa-image"></i> Scan from Image
-                <input type="file" id="qr-upload-input" accept="image/*" capture="environment" style="display:none;">
+                <input type="file" id="qr-upload-input" accept="image/*" style="display:none;">
             </label>
         </div>
         
