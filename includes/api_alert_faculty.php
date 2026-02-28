@@ -51,15 +51,9 @@ try {
     $alert_message = "🚨 WARNING: Your managed asset '{$asset_string}' was just located out-of-bounds in '{$room_string}' by {$acting_user_name}.";
 
     // 2. Channel A: In-App System Notification
-    // Assuming `notify_user` handles INSERT INTO notifications
-    if (function_exists('notify_user')) {
-        notify_user($conn, $owner_faculty_id, $alert_message);
-    } else {
-        // Fallback structural insert if helper isn't loaded
-        $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, is_read, created_at) VALUES (?, ?, 0, NOW())");
-        $notif_stmt->bind_param("is", $owner_faculty_id, $alert_message);
-        $notif_stmt->execute();
-    }
+    $notif_stmt = $conn->prepare("INSERT INTO notifications (user_id, message, is_read, created_at) VALUES (?, ?, 0, NOW())");
+    $notif_stmt->bind_param("is", $owner_faculty_id, $alert_message);
+    $notif_stmt->execute();
 
     // 3. Channel B: Telegram Integration
     // Retrieve the Telegram Bot Token configured in the database settings table
