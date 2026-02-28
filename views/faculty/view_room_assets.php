@@ -360,7 +360,7 @@ include __DIR__ . '/../partials/header.php';
             <div class="upload-wrapper">
                 <label class="upload-btn">
                     <i class="fas fa-image"></i> Scan from Image
-                    <input type="file" id="qr-upload-input" accept="image/*" capture="environment" style="display:none;">
+                    <input type="file" id="qr-upload-input" accept="image/*" style="display:none;">
                 </label>
             </div>
 
@@ -544,7 +544,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5; font-weight: 500;">${errorMsg}</p>
                     <label class="upload-btn" style="background: rgba(231,76,60,0.1); border-color: rgba(231,76,60,0.4); color: #ff9e93; margin: 0; cursor: pointer; width: auto; display: inline-flex;">
                         <i class="fas fa-folder-open"></i> Use File Upload Fallback
-                        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="
+                        <input type="file" accept="image/*" style="display:none;" onchange="
                             const parentInput = document.getElementById('qr-upload-input');
                             if (parentInput) {
                                 parentInput.files = this.files;
