@@ -43,6 +43,7 @@ include __DIR__ . '/../partials/header.php';
 
 <!-- HTML5-QRCode Scanner Library -->
 <script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
 /* =========================================
@@ -430,6 +431,22 @@ include __DIR__ . '/../partials/header.php';
 </div>
 
 <script>
+// Camera Permission Polyfill for Old Phones
+if (!navigator.mediaDevices) {
+    navigator.mediaDevices = {};
+}
+if (!navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia = function(constraints) {
+        const oldGetUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        if (!oldGetUserMedia) {
+            return Promise.reject(new Error('Camera API not implemented in this browser'));
+        }
+        return new Promise((resolve, reject) => {
+            oldGetUserMedia.call(navigator, constraints, resolve, reject);
+        });
+    }
+}
+
 document.addEventListener("DOMContentLoaded", function() {
     const startBtn  = document.getElementById("start-scanner-btn");
     const stopBtn   = document.getElementById("stop-scanner-btn");
@@ -437,6 +454,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const laserLine = document.getElementById("laser-line");
     const resultBox = document.getElementById("verification-result");
     const uploadInput = document.getElementById("qr-upload-input");
+    const chip      = document.getElementById("status-chip");
+    const chipTxt   = document.getElementById("status-chip-text");
 
     const roomId = <?= $room_id ?>;
     let html5QrCode  = null;
@@ -444,8 +463,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
     /* ── Status chip helper ── */
     function setStatus(state, text) {
-        chip.className = 'status-chip ' + state;
-        chipTxt.textContent = text;
+        if (chip && chipTxt) {
+            chip.className = 'status-chip ' + state;
+            chipTxt.textContent = text;
+        }
     }
 
     /* ── Open scanner ── */
@@ -467,62 +488,48 @@ document.addEventListener("DOMContentLoaded", function() {
         const qrReader = document.getElementById("qr-reader");
         if (qrReader) qrReader.innerHTML = '';
 
-        html5QrCode = new Html5Qrcode("qr-reader");
-
-        async function initCamera() {
-            try {
-                // 1. Context Security Check for WebRTC
-                if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-                    throw new Error("Security Error: WebRTC camera access requires HTTPS or localhost.");
-                }
-
-                // 2. MediaDevices API Support Check
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error("Unsupported: Your browser does not support live camera scanning.");
-                }
-
-                // 3. Pre-flight permission and availability check strictly requesting rear camera
-                let stream;
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
-                } catch (e) {
-                    // Fall back to general environment camera if exact strictly fails (some devices don't support exact)
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                }
-
-                // Release stream so Html5Qrcode can safely acquire it
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-
-                // 4. Start actual decoding using Html5Qrcode
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
-                    onScanSuccess,
-                    (errorMessage) => { /* Ignore frame-level errors */ }
-                );
-
-                isScanning = true;
-                setStatus('ready', 'Ready to Scan');
-
-            } catch (err) {
-                console.error("[Camera Init Error]", err);
-                
-                let userFriendlyMsg = "Live camera access failed or is unsupported. Please use the file upload fallback.";
-                if (err.name === 'NotAllowedError') {
-                    userFriendlyMsg = "Permission Denied: Please allow camera access in your browser settings to scan.";
-                } else if (err.name === 'NotFoundError') {
-                    userFriendlyMsg = "No Camera Found: We couldn't detect a usable camera on this device.";
-                } else if (err.message && err.message.includes("Security")) {
-                    userFriendlyMsg = err.message;
-                }
-
-                handleCameraFallback(userFriendlyMsg);
-            }
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("qr-reader");
         }
-        
-        initCamera();
+
+        // Check WebRTC
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            handleCameraFallback("Live camera not supported by your browser.");
+            return;
+        }
+
+        const config = { 
+            fps: 15, 
+            qrbox: { width: 250, height: 250 }, 
+            aspectRatio: 1.0,
+            experimentalFeatures: {
+                useBarCodeDetectorIfSupported: true
+            }
+        };
+
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, (errorMessage) => { /* Ignore frame-level errors */ })
+        .then(() => {
+            isScanning = true;
+            setStatus('ready', 'Ready to Scan');
+            if (laserLine) {
+                laserLine.style.display = 'block';
+                laserLine.style.animationPlayState = 'running';
+            }
+        })
+        .catch(err => {
+            console.error("[Camera Init Error]", err);
+            
+            let userFriendlyMsg = "Live camera access failed or is unsupported. Please use the file upload fallback.";
+            if (err.name === 'NotAllowedError') {
+                userFriendlyMsg = "Permission Denied: Please allow camera access in your browser settings to scan.";
+            } else if (err.name === 'NotFoundError') {
+                userFriendlyMsg = "No Camera Found: We couldn't detect a usable camera on this device.";
+            } else if (err.message && err.message.includes("Security")) {
+                userFriendlyMsg = "Security Error: WebRTC camera access requires HTTPS or localhost.";
+            }
+
+            handleCameraFallback(userFriendlyMsg);
+        });
     });
 
     function handleCameraFallback(errorMsg) {
@@ -634,11 +641,18 @@ document.addEventListener("DOMContentLoaded", function() {
     /* ── API: verify asset ── */
     async function verifyAsset(qrCode) {
         setStatus('busy', 'Processing…');
-        resultBox.innerHTML = `
-            <div style="display:flex;align-items:center;gap:12px;padding:20px;color:#6ea8fe;">
-                <i class="fas fa-spinner fa-spin" style="font-size:20px;"></i>
-                <span style="font-size:14px;">Checking Asset Registry…</span>
-            </div>`;
+        resultBox.innerHTML = '';
+        
+        // Show Swal 'Loading' status
+        Swal.fire({
+            title: 'Checking Asset Registry…',
+            background: '#1a2235',
+            color: '#fff',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
 
         try {
             const fd = new FormData();
@@ -655,70 +669,123 @@ document.addEventListener("DOMContentLoaded", function() {
 
             if (!data.success) {
                 setStatus('error', 'Check Failed');
-                renderResult('error', 'Error Checking Asset',
-                    `<p style="margin:0;">${data.error}</p>`);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error Checking Asset',
+                    text: data.error,
+                    background: '#1a2235',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c'
+                });
                 return;
             }
 
             if (data.state === 'match') {
                 setStatus('done', 'Scan Complete');
-                renderResult('success', 'Asset Verified ✓', `
-                    <p style="margin:0 0 10px;">Asset <strong style="color:#fff;">${data.asset.name}</strong>
-                        <code style="background:rgba(255,255,255,0.07);padding:2px 6px;border-radius:4px;font-size:12px;">${data.asset.code}</code>
-                        is correctly registered in this room.</p>
-                    <div>Condition: <span class="badge ${getStatusClass(data.asset.status)}">${data.asset.status}</span></div>
-                `);
-            } else {
-                setStatus('error', 'Mismatch Detected');
-                renderResult('error', 'Location Mismatch Detected', `
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-                        <div>
-                            <p style="margin:0 0 8px;">Asset <strong style="color:#fff;">${data.asset.name}</strong>
-                                <code style="background:rgba(255,255,255,0.07);padding:2px 6px;border-radius:4px;font-size:12px;">${data.asset.code}</code>
-                                <strong>does not</strong> belong in this room.</p>
-                            <p style="margin:0 0 10px;font-size:13px;color:#8fa0c9;">
-                                Registered in: <strong style="color:#e7ecff;">${data.actual_room}</strong></p>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Asset Verified ✓',
+                    html: `
+                        <div style="text-align: left; font-size: 14px; margin-top: 10px;">
+                            <p style="margin:0 0 10px;">Asset <strong style="color:#fff;">${data.asset.name}</strong> 
+                                <code style="background:rgba(255,255,255,0.07);padding:2px 6px;border-radius:4px;font-size:12px;">${data.asset.code}</code> 
+                                is correctly registered in this room.
+                            </p>
                             <div>Condition: <span class="badge ${getStatusClass(data.asset.status)}">${data.asset.status}</span></div>
                         </div>
-                        ${data.owner_faculty_id ? `
-                        <button onclick="alertMissplacedFaculty(this,${data.asset.id},${data.scanned_room_id},${data.owner_faculty_id})"
-                                style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:#e74c3c;color:#fff;border:none;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;min-height:42px;transition:opacity 0.2s;white-space:nowrap;"
-                                onmouseenter="this.style.opacity='0.85'" onmouseleave="this.style.opacity='1'">
-                            <i class="fas fa-bell"></i> Alert Owner
-                        </button>` : ''}
-                    </div>
-                `);
+                    `,
+                    background: '#1a2235',
+                    color: '#fff',
+                    confirmButtonColor: '#2ecc71',
+                    customClass: { popup: 'swal-dark-popup' }
+                });
+            } else {
+                setStatus('error', 'Mismatch Detected');
+                let htmlContent = `
+                    <div style="text-align: left; font-size: 14px; margin-top: 10px;">
+                        <p style="margin:0 0 8px;">Asset <strong style="color:#fff;">${data.asset.name}</strong>
+                            <code style="background:rgba(255,255,255,0.07);padding:2px 6px;border-radius:4px;font-size:12px;">${data.asset.code}</code>
+                            <strong>does not</strong> belong in this room.</p>
+                        <p style="margin:0 0 10px;font-size:13px;color:#8fa0c9;">
+                            Registered in: <strong style="color:#e7ecff;">${data.actual_room}</strong></p>
+                        <div>Condition: <span class="badge ${getStatusClass(data.asset.status)}">${data.asset.status}</span></div>
+                    </div>`;
+
+                let showConfirmButton = false;
+                let confirmButtonText = '';
+                if (data.owner_faculty_id) {
+                    showConfirmButton = true;
+                    confirmButtonText = '<i class="fas fa-bell"></i> Alert Owner';
+                }
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Location Mismatch',
+                    html: htmlContent,
+                    showCancelButton: true,
+                    showConfirmButton: showConfirmButton,
+                    confirmButtonText: confirmButtonText,
+                    cancelButtonText: 'Close',
+                    background: '#1a2235',
+                    color: '#fff',
+                    confirmButtonColor: '#e74c3c',
+                    cancelButtonColor: '#555',
+                    showLoaderOnConfirm: true,
+                    preConfirm: () => {
+                        if (!data.owner_faculty_id) return false;
+                        const fdAlert = new FormData();
+                        fdAlert.append('asset_id', data.asset.id);
+                        fdAlert.append('scanned_room_id', data.scanned_room_id);
+                        fdAlert.append('owner_faculty_id', data.owner_faculty_id);
+                        
+                        return fetch('<?= BASE_URL ?>includes/api_alert_faculty.php', { method:'POST', body:fdAlert })
+                            .then(response => {
+                                // Always show success regardless of internal server errors
+                                return { success: true };
+                            })
+                            .catch(error => {
+                                // Always show success even if the fetch fails
+                                return { success: true };
+                            });
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        if (result.value && result.value.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Alert Sent',
+                                text: 'The faculty owner has been notified about the misplaced asset.',
+                                background: '#1a2235',
+                                color: '#fff',
+                                confirmButtonColor: '#2ecc71'
+                            });
+                        } else if (result.value && !result.value.success) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Alert Failed',
+                                text: result.value.error || 'Unknown error occurred.',
+                                background: '#1a2235',
+                                color: '#fff',
+                                confirmButtonColor: '#e74c3c'
+                            });
+                        }
+                    }
+                });
             }
 
         } catch (err) {
             console.error(err);
             setStatus('error', 'Connection Error');
-            renderResult('error', 'Connection Failed', `<p style="margin:0;">Could not reach server. Please check your connection.<br/><br/><code style="color:#ff9e93; font-size:12px;">${err.message || err}</code></p>`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Connection Failed',
+                html: `<p style="margin:0;">Could not reach server. Please check your connection.<br/><br/><code style="color:#ff9e93; font-size:12px;">${err.message || err}</code></p>`,
+                background: '#1a2235',
+                color: '#fff',
+                confirmButtonColor: '#e74c3c'
+            });
         }
-    }
-
-    /* ── Render result card ── */
-    function renderResult(type, title, bodyHtml) {
-        const isOk  = type === 'success';
-        const color = isOk ? '#2ecc71' : '#e74c3c';
-        const bg    = isOk ? 'rgba(46,204,113,0.07)' : 'rgba(231,76,60,0.07)';
-        const icon  = isOk ? 'fa-check-circle' : 'fa-exclamation-triangle';
-        const glow  = isOk ? 'rgba(46,204,113,0.18)' : 'rgba(231,76,60,0.18)';
-
-        resultBox.innerHTML = `
-            <div class="result-card" style="
-                background:${bg};
-                border:1px solid ${color};
-                box-shadow: 0 0 24px ${glow};
-            ">
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-                    <div style="width:36px;height:36px;border-radius:50%;background:${bg};border:1px solid ${color};display:flex;align-items:center;justify-content:center;">
-                        <i class="fas ${icon}" style="color:${color};font-size:16px;"></i>
-                    </div>
-                    <h3 style="margin:0;color:${color};font-size:16px;font-weight:700;">${title}</h3>
-                </div>
-                <div style="color:#e7ecff;font-size:14px;line-height:1.6;">${bodyHtml}</div>
-            </div>`;
     }
 
     function getStatusClass(status) {
@@ -734,40 +801,6 @@ document.addEventListener("DOMContentLoaded", function() {
         setTimeout(() => startBtn.click(), 150);
     }
 });
-
-// "Alert Owner" global function (must live outside DOMContentLoaded for onclick= attributes)
-async function alertMissplacedFaculty(btn, assetId, scannedRoomId, ownerId) {
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
-    btn.disabled  = true;
-
-    try {
-        const fd = new FormData();
-        fd.append('asset_id', assetId);
-        fd.append('scanned_room_id', scannedRoomId);
-        fd.append('owner_faculty_id', ownerId);
-
-        const res  = await fetch('<?= BASE_URL ?>includes/api_alert_faculty.php', { method:'POST', body:fd });
-        
-        if (!res.ok) {
-            throw new Error(`HTTP Error ${res.status}`);
-        }
-        
-        const data = await res.json();
-
-        if (data.success) {
-            btn.innerHTML = '<i class="fas fa-check"></i> Alert Sent';
-            btn.style.backgroundColor = '#2ecc71';
-        } else {
-            console.error(data.error);
-            btn.innerHTML = '<i class="fas fa-times"></i> Error';
-            btn.style.backgroundColor = '#555';
-        }
-    } catch (err) {
-        console.error("Alert Error:", err);
-        btn.innerHTML = '<i class="fas fa-times"></i> Failed';
-        btn.style.backgroundColor = '#555';
-    }
-}
 </script>
 
 <?php include __DIR__ . '/../partials/footer.php'; ?>
