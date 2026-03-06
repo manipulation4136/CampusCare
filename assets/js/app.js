@@ -53,7 +53,18 @@ document.addEventListener('DOMContentLoaded', function () {
   const dropdowns = document.querySelectorAll('.dropdown-toggle');
   dropdowns.forEach(trigger => {
     trigger.addEventListener('click', function () {
-      this.parentElement.classList.toggle('open');
+      const parent = this.parentElement;
+      const wasOpen = parent.classList.contains('open');
+
+      // Close all other dropdowns
+      document.querySelectorAll('.dropdown-item.open').forEach(item => {
+        item.classList.remove('open');
+      });
+
+      // Toggle current
+      if (!wasOpen) {
+        parent.classList.add('open');
+      }
     });
   });
 
