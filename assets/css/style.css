@@ -809,10 +809,27 @@ form .actions {
     height: calc(100vh - 64px);
     position: sticky;
     top: 64px;
-    overflow: visible !important;
-    /* CRITICAL: Prevent clipping of flyout menus */
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Custom Scrollbar for Sidebar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
     transition: transform 0.3s ease;
     z-index: 1000;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .sidebar-header {
@@ -900,48 +917,27 @@ form .actions {
 }
 
 .dropdown-item.open>.dropdown-toggle .arrow {
-    transform: rotate(-90deg);
-    /* Rotate right for flyout instead of down */
+    transform: rotate(-180deg);
+    /* Rotate up for accordion */
 }
 
 /* -------------------------------------------------
-   FLYOUT LOGIC (Replacing Accordion)
+   INLINE ACCORDION LOGIC
    ------------------------------------------------- */
 .submenu {
-    position: absolute;
-    left: 100%;
-    top: 0;
-    min-width: 220px;
-    width: max-content;
-    /* Ensure items don't text-wrap awkwardly */
-    background: #0b1020;
-    border: 1px solid #1f2a44;
-    border-radius: 8px;
-    box-shadow: 10px 10px 30px rgba(0, 0, 0, 0.5);
-    padding: 8px 0;
+    max-height: 0;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.15); /* Slightly darker for nested feel */
     margin: 0;
+    padding: 0;
     list-style: none;
-    /* Clear browser defaults */
     box-sizing: border-box;
-    /* Strict internal padding lock */
-    z-index: 9999;
-
-    /* Animation defaults */
-    opacity: 0;
-    visibility: hidden;
-    transform: translateX(15px);
-    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.4s;
+    transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* When parent dropdown-item is open, show the submenu flyout */
-.dropdown-item.open>.submenu,
-.dropdown-item:hover>.submenu
-
-/* Optional: Also open on hover? Staying with click for now per JS setup */
-    {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(0);
+/* When parent dropdown-item is open, expand the submenu */
+.dropdown-item.open > .submenu {
+    max-height: 500px; /* Arbitrary large value to allow transition */
 }
 
 /* Nested Dropdowns (e.g., Settings -> Config Data) */
@@ -954,9 +950,8 @@ form .actions {
 /* Submenu Links Formatting */
 .submenu li a,
 .submenu .dropdown-toggle {
-    padding: 10px 20px;
-    font-size: 0.85rem;
-    /* Decreased size for hierarchy */
+    padding: 10px 20px 10px 40px; /* Indent for visual hierarchy */
+    font-size: 1.05rem; /* Match parent size */
     color: #a4b1cd;
     justify-content: space-between;
 }
