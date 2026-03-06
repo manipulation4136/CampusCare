@@ -97,8 +97,11 @@ include __DIR__ . '/../partials/header.php';
                     <tr>
                         <td><?= htmlspecialchars($a['room_no']) ?></td>
                         <td><?= htmlspecialchars($a['name']) ?></td>
-                        <td style="text-align: center;">
-                            <form method="post" style="display:inline;">
+                        <td style="text-align: center; white-space: nowrap;">
+                            <a href="<?= BASE_URL ?>views/admin/forms/edit_assignment.php?id=<?= $a['id'] ?>" class="btn icon-btn" style="color: #6ea8fe; display: inline-flex; vertical-align: middle;" title="Edit Assignment">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <form method="post" style="display:inline-block; vertical-align: middle;">
                                 <?= get_csrf_input() ?>
                                 <input type="hidden" name="delete_id" value="<?= $a['id'] ?>">
                                 <button class="btn icon-btn" style="color: #e74c3c;" onclick="return confirm('Are you sure you want to remove this assignment?');" title="Remove Assignment">
