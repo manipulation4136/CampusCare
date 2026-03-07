@@ -23,7 +23,16 @@ RUN echo '<Directory /var/www/html/> \n\
     Options Indexes FollowSymLinks \n\
     AllowOverride All \n\
     Require all granted \n\
-</Directory>' > /etc/apache2/conf-available/override.conf \
+    </Directory>' > /etc/apache2/conf-available/override.conf \
     && a2enconf override
+
+# Configure PHP upload limits
+RUN { \
+    echo "file_uploads = On"; \
+    echo "memory_limit = 256M"; \
+    echo "upload_max_filesize = 50M"; \
+    echo "post_max_size = 50M"; \
+    echo "max_execution_time = 600"; \
+    } > /usr/local/etc/php/conf.d/uploads.ini
 
 EXPOSE 80
