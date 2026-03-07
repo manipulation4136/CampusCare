@@ -244,9 +244,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $size = $_FILES['image']['size'];
                     $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
                     
-                    // Enforce 5MB limit on server
-                    if ($size > 5 * 1024 * 1024) {
-                        $error = 'Image file size must be less than 5MB.';
+                    // Enforce 50MB limit on server
+                    if ($size > 50 * 1024 * 1024) {
+                        $error = 'Image file size must be less than 50MB.';
                     } else {
                         // Strict MIME type validation
                         if (function_exists('finfo_open')) {
@@ -537,9 +537,9 @@ function playAchievementSound() {
             if (input.files && input.files[0]) {
                 const file = input.files[0];
                 
-                // 5MB Limit Check
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('File size exceeds 5MB limit. Please choose a smaller image.');
+                // 50MB Limit Check
+                if (file.size > 50 * 1024 * 1024) {
+                    alert('File size exceeds 50MB limit. Please choose a smaller image.');
                     clearImage();
                     return;
                 }
