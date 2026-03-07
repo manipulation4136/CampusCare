@@ -388,6 +388,7 @@ include __DIR__ . '/../partials/header.php';
     // Asset Data needed for QR logic
     const assetCode = <?= json_encode($asset['asset_code']) ?>;
     const assetName = <?= json_encode($asset['asset_name']) ?>;
+    const roomNo = <?= json_encode($asset['room_no'] ?? 'Unassigned') ?>;
     // URL identical to the logic found in generate_qr.php
     const reportUrl = <?= json_encode(BASE_URL . 'views/student/report_new.php?qr_id=' . urlencode($asset['asset_code'])) ?>;
 
@@ -415,8 +416,8 @@ include __DIR__ . '/../partials/header.php';
         
         new QRCode(tempDiv, {
             text: reportUrl,
-            width: 150,
-            height: 150,
+            width: 135,
+            height: 135,
             colorDark : "#000000",
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.L
@@ -447,24 +448,29 @@ include __DIR__ . '/../partials/header.php';
             ctx.lineWidth = 1;
             ctx.strokeRect(0, 0, cardWidth, cardHeight);
             
-            // Draw the QR Code centered near the top (15px padding as per .qr-card)
-            ctx.drawImage(qrCanvas, 20, 15, 150, 150);
+            // Draw the QR Code centered near the top
+            ctx.drawImage(qrCanvas, (cardWidth - 135) / 2, 20, 135, 135);
             
             // Common text setups ensuring clarity
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             
-            // Asset Name (.asset-name: bold, 1.1em -> ~17px, #000)
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold 17px sans-serif';
+            // Asset Name (.asset-name: 800, 1.15em -> ~18px, #111)
+            ctx.fillStyle = '#111111';
+            ctx.font = '800 18px sans-serif';
             // Simple string clipping if it's too long
-            const truncatedName = assetName.length > 20 ? assetName.substring(0, 18) + '...' : assetName;
-            ctx.fillText(truncatedName, cardWidth / 2, 180);
+            const truncatedName = assetName.length > 18 ? assetName.substring(0, 16) + '...' : assetName;
+            ctx.fillText(truncatedName.toUpperCase(), cardWidth / 2, 165);
             
-            // Asset Code (.asset-code: monospace, 0.9em -> ~14px, #333)
+            // Asset Code (.asset-code: 600, 1.05em -> ~16px, #333)
             ctx.fillStyle = '#333333';
-            ctx.font = '14px monospace';
-            ctx.fillText(assetCode, cardWidth / 2, 205);
+            ctx.font = '600 16px sans-serif';
+            ctx.fillText(assetCode, cardWidth / 2, 190);
+            
+            // Room Number
+            ctx.fillStyle = '#555555';
+            ctx.font = '600 14px sans-serif';
+            ctx.fillText("Room: " + roomNo, cardWidth / 2, 215);
             
             // Create a downloadable anchor
             const link = document.createElement('a');
